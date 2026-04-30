@@ -3,6 +3,7 @@ import { getSupabaseServerClient } from "@/lib/supabase";
 import { ProductImagePreview } from "@/components/product-image-preview";
 import Link from "next/link";
 import { SiteHeader } from "@/components/site-header";
+import Image from "next/image";
 
 const PRODUCTS_PER_PAGE = 8;
 
@@ -66,26 +67,34 @@ export default async function Home({
     <main className="min-h-screen bg-slate-50 text-slate-900">
       <SiteHeader />
 
-      <section className="mx-auto max-w-6xl px-6 pb-10 pt-14 md:pb-12 md:pt-20">
-        <div className="grid items-start gap-10 lg:grid-cols-[1.1fr_0.9fr]">
-          <div className="space-y-6 pt-2">
-            <p className="inline-block rounded-full border border-slate-300 bg-white px-3 py-1 text-xs font-medium tracking-wide text-slate-600">
-              PS MOLDINGS | FACTORY DIRECT
-            </p>
-            <h1 className="text-4xl font-extrabold leading-[1.05] text-slate-900 md:text-6xl">
-              Premium PS Moldings Factory Direct
-            </h1>
-            <p className="max-w-2xl text-base leading-relaxed text-slate-600 md:text-lg">
-              Specialized in Southeast Asia markets with Form E support and door-to-door double-clearance logistics.
-            </p>
-            <div className="flex flex-wrap gap-3 text-sm">
-              <span className="rounded-full border border-slate-300 bg-white px-4 py-2 text-slate-700">OEM/ODM Service</span>
-              <span className="rounded-full border border-slate-300 bg-white px-4 py-2 text-slate-700">Stable Output Capacity</span>
-              <span className="rounded-full border border-slate-300 bg-white px-4 py-2 text-slate-700">Export Standard Packing</span>
+      <section className="relative w-full overflow-hidden border-y border-slate-200">
+        <Image
+          src="/banner-frame-gallery.png"
+          alt="Industrial frame manufacturing workshop"
+          width={2600}
+          height={1200}
+          className="h-[42vh] min-h-[320px] w-full object-cover md:h-[56vh]"
+          priority
+        />
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-slate-950/45 via-slate-900/15 to-transparent" />
+        <div className="absolute inset-0">
+          <div className="mx-auto flex h-full max-w-6xl items-center px-6">
+            <div className="max-w-3xl space-y-6 pt-2 text-white">
+              <p className="inline-block rounded-full border border-white/40 bg-white/10 px-3 py-1 text-xs font-medium tracking-wide text-white">
+                PS MOLDINGS | FACTORY DIRECT
+              </p>
+              <h1 className="text-4xl font-extrabold leading-[1.05] text-white md:text-6xl">
+                Premium PS Moldings Factory Direct
+              </h1>
+              <p className="max-w-2xl text-base leading-relaxed text-white/90 md:text-lg">
+                Specialized in Southeast Asia markets with Form E support and door-to-door double-clearance logistics.
+              </p>
+              <div className="flex flex-wrap gap-3 text-sm">
+                <span className="rounded-full border border-white/40 bg-white/10 px-4 py-2 text-white">OEM/ODM Service</span>
+                <span className="rounded-full border border-white/40 bg-white/10 px-4 py-2 text-white">Stable Output Capacity</span>
+                <span className="rounded-full border border-white/40 bg-white/10 px-4 py-2 text-white">Export Standard Packing</span>
+              </div>
             </div>
-          </div>
-          <div className="rounded-3xl border border-slate-200 bg-white p-2">
-            <InquiryForm />
           </div>
         </div>
       </section>
@@ -192,6 +201,12 @@ export default async function Home({
               No machinery products yet. Add products in Admin with category Frame Making Machinery & Consumables.
             </div>
           )}
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-6xl px-6 pb-16">
+        <div className="mx-auto max-w-2xl rounded-3xl border border-slate-200 bg-white p-2">
+          <InquiryForm />
         </div>
       </section>
 
