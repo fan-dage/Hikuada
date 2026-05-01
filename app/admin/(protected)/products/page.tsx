@@ -162,7 +162,8 @@ async function createProduct(formData: FormData) {
         imageUrl = await saveProductImage(imageFile);
       } catch (err) {
         const detail = err instanceof Error ? err.message : String(err);
-        throw new Error(`图片上传失败（请确认服务器对本机目录有写入权限）：${detail}`);
+        console.error("saveProductImage failed, continue without image:", detail);
+        imageUrl = existingImageUrl || null;
       }
     }
 
@@ -319,7 +320,7 @@ async function updateProduct(formData: FormData) {
       }
     } catch (err) {
       const detail = err instanceof Error ? err.message : String(err);
-      throw new Error(`图片上传失败：${detail}`);
+      console.error("saveProductImage failed on update, keep previous image:", detail);
     }
 
     const { error: updateError } = await updateProductRow(supabase, id, {
