@@ -25,7 +25,13 @@ export async function POST(request: Request) {
       maxAge: 60 * 60 * 12,
     });
     return response;
-  } catch {
+  } catch (error) {
+    if (error instanceof Error && error.message.startsWith("Missing ADMIN_")) {
+      return NextResponse.json(
+        { error: "Admin auth env is missing on server. Please set ADMIN_USERNAME and ADMIN_PASSWORD." },
+        { status: 500 },
+      );
+    }
     return NextResponse.json({ error: "Invalid request." }, { status: 400 });
   }
 }

@@ -117,6 +117,9 @@ async function createProduct(formData: FormData) {
   const size = Number.isNaN(sizeWidth) || Number.isNaN(sizeHeight) ? "" : `${sizeWidth} x ${sizeHeight} mm`;
   let packingSpec = "";
   if (packingLengthRaw || packingPcsRaw) {
+    if (!packingLengthRaw || !packingPcsRaw) {
+      throw new Error("包装长度和每箱 pcs 需要同时填写，或同时留空。");
+    }
     const packingLength = packingLengthRaw ? Number(packingLengthRaw) : NaN;
     const packingPcs = packingPcsRaw ? Number(packingPcsRaw) : NaN;
     if (
@@ -125,7 +128,7 @@ async function createProduct(formData: FormData) {
       packingLength <= 0 ||
       packingPcs <= 0
     ) {
-      return;
+      throw new Error("包装长度和每箱 pcs 必须是大于 0 的数字。");
     }
     packingSpec = `${packingLength}m x ${packingPcs} pcs / carton`;
   }
@@ -133,16 +136,16 @@ async function createProduct(formData: FormData) {
   const sortOrder = Number(sortOrderRaw);
 
   if (!model || !sizeWidthRaw || !sizeHeightRaw || !size) {
-    return;
+    throw new Error("请完整填写型号、宽度和高度。");
   }
   if (stockQuantityRaw && Number.isNaN(stockQuantity)) {
-    return;
+    throw new Error("库存数量必须是数字。");
   }
   if (Number.isNaN(sizeWidth) || Number.isNaN(sizeHeight) || sizeWidth <= 0 || sizeHeight <= 0) {
-    return;
+    throw new Error("宽度和高度必须是大于 0 的数字。");
   }
   if (Number.isNaN(sortOrder) || sortOrder < 0) {
-    return;
+    throw new Error("排序必须是大于等于 0 的数字。");
   }
 
   try {
@@ -249,7 +252,7 @@ async function updateProduct(formData: FormData) {
   const existingImageUrl = formData.get("existing_image_url")?.toString().trim() || "";
 
   if (!id || !model || !sizeWidthRaw || !sizeHeightRaw) {
-    return;
+    throw new Error("请完整填写型号、宽度和高度。");
   }
 
   const sizeWidth = Number(sizeWidthRaw);
@@ -259,6 +262,9 @@ async function updateProduct(formData: FormData) {
 
   let packingSpec = "";
   if (packingLengthRaw || packingPcsRaw) {
+    if (!packingLengthRaw || !packingPcsRaw) {
+      throw new Error("包装长度和每箱 pcs 需要同时填写，或同时留空。");
+    }
     const packingLength = packingLengthRaw ? Number(packingLengthRaw) : NaN;
     const packingPcs = packingPcsRaw ? Number(packingPcsRaw) : NaN;
     if (
@@ -267,7 +273,7 @@ async function updateProduct(formData: FormData) {
       packingLength <= 0 ||
       packingPcs <= 0
     ) {
-      return;
+      throw new Error("包装长度和每箱 pcs 必须是大于 0 的数字。");
     }
     packingSpec = `${packingLength}m x ${packingPcs} pcs / carton`;
   }
@@ -278,13 +284,13 @@ async function updateProduct(formData: FormData) {
     sizeWidth <= 0 ||
     sizeHeight <= 0
   ) {
-    return;
+    throw new Error("宽度和高度必须是大于 0 的数字。");
   }
   if (stockQuantityRaw && Number.isNaN(stockQuantity)) {
-    return;
+    throw new Error("库存数量必须是数字。");
   }
   if (Number.isNaN(sortOrder) || sortOrder < 0) {
-    return;
+    throw new Error("排序必须是大于等于 0 的数字。");
   }
 
   const size = `${sizeWidth} x ${sizeHeight} mm`;
