@@ -22,7 +22,9 @@ type CategoryOption = {
   name: string;
 };
 
-async function saveProductImage(file: File) {
+const STORAGE_BUCKET = process.env.SUPABASE_PRODUCTS_BUCKET || "products";
+
+async function saveProductImageToLocal(file: File) {
   const uploadDir = path.join(process.cwd(), "public", "uploads", "products");
   await mkdir(uploadDir, { recursive: true });
   const safeExt = file.name.includes(".") ? file.name.split(".").pop()?.toLowerCase() || "jpg" : "jpg";
@@ -33,15 +35,56 @@ async function saveProductImage(file: File) {
   return `/uploads/products/${filename}`;
 }
 
-async function removeLocalImage(imageUrl: string | null | undefined) {
-  if (!imageUrl || !imageUrl.startsWith("/uploads/products/")) {
+function parseStorageObjectPath(publicUrl: string) {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (!supabaseUrl) return null;
+  const expectedPrefix = `${supabaseUrl}/storage/v1/object/public/${STORAGE_BUCKET}/`;
+  if (!publicUrl.startsWith(expectedPrefix)) return null;
+  return decodeURIComponent(publicUrl.slice(expectedPrefix.length));
+}
+
+async function saveProductImage(
+  supabase: ReturnType<typeof getSupabaseServerClient>,
+  file: File,
+) {
+  const safeExt = file.name.includes(".") ? file.name.split(".").pop()?.toLowerCase() || "jpg" : "jpg";
+  const objectPath = `products/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${safeExt}`;
+
+  // Prefer Supabase Storage in production/serverless environments.
+  const buffer = Buffer.from(await file.arrayBuffer());
+  const { error: uploadErr } = await supabase.storage
+    .from(STORAGE_BUCKET)
+    .upload(objectPath, buffer, { contentType: file.type || undefined, upsert: false });
+  if (!uploadErr) {
+    const { data } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(objectPath);
+    if (data.publicUrl) return data.publicUrl;
+  }
+
+  // Fallback for local development when Storage bucket is unavailable.
+  return saveProductImageToLocal(file);
+}
+
+async function removeUploadedImage(
+  supabase: ReturnType<typeof getSupabaseServerClient>,
+  imageUrl: string | null | undefined,
+) {
+  if (!imageUrl) {
     return;
   }
-  const filePath = path.join(process.cwd(), "public", imageUrl.replace(/^\//, ""));
-  try {
-    await unlink(filePath);
-  } catch {
-    // Ignore missing files.
+
+  const objectPath = parseStorageObjectPath(imageUrl);
+  if (objectPath) {
+    await supabase.storage.from(STORAGE_BUCKET).remove([objectPath]);
+    return;
+  }
+
+  if (imageUrl.startsWith("/uploads/products/")) {
+    const filePath = path.join(process.cwd(), "public", imageUrl.replace(/^\//, ""));
+    try {
+      await unlink(filePath);
+    } catch {
+      // Ignore missing files.
+    }
   }
 }
 
@@ -152,7 +195,7 @@ async function createProduct(formData: FormData) {
     let imageUrl: string | null = existingImageUrl || null;
     if (imageFile instanceof File && imageFile.size > 0) {
       try {
-        imageUrl = await saveProductImage(imageFile);
+        imageUrl = await saveProductImage(supabase, imageFile);
       } catch (err) {
         const detail = err instanceof Error ? err.message : String(err);
         console.error("saveProductImage failed, continue without image:", detail);
@@ -204,7 +247,11 @@ async function deleteProducts(formData: FormData) {
     .select("image_url")
     .in("id", ids);
   await supabase.from("hikuada_products").delete().in("id", ids);
-  await Promise.all((existingProducts || []).map((item) => removeLocalImage(item.image_url as string | null)));
+  await Promise.all(
+    (existingProducts || []).map((item) =>
+      removeUploadedImage(supabase, item.image_url as string | null),
+    ),
+  );
   revalidatePath("/admin");
   revalidatePath("/admin/home");
   revalidatePath("/admin/products");
@@ -224,7 +271,7 @@ async function clearProductImage(formData: FormData) {
     .eq("id", id)
     .single();
   await supabase.from("hikuada_products").update({ image_url: null }).eq("id", id);
-  await removeLocalImage((product?.image_url as string | null) || null);
+  await removeUploadedImage(supabase, (product?.image_url as string | null) || null);
   revalidatePath("/admin/products");
   revalidatePath("/admin");
   revalidatePath("/admin/home");
@@ -302,7 +349,7 @@ async function updateProduct(formData: FormData) {
     }
     try {
       if (imageFile instanceof File && imageFile.size > 0) {
-        nextImageUrl = await saveProductImage(imageFile);
+        nextImageUrl = await saveProductImage(supabase, imageFile);
       }
     } catch (err) {
       const detail = err instanceof Error ? err.message : String(err);
@@ -329,7 +376,7 @@ async function updateProduct(formData: FormData) {
       currentProduct.image_url !== nextImageUrl &&
       currentProduct.image_url.startsWith("/uploads/products/")
     ) {
-      await removeLocalImage(currentProduct.image_url);
+      await removeUploadedImage(supabase, currentProduct.image_url);
     }
 
     revalidatePath("/admin/products");
