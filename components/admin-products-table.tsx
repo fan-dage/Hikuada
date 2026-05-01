@@ -2,7 +2,8 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useMemo, useRef, useState, type FocusEvent, type KeyboardEvent } from "react";
+import { createPortal } from "react-dom";
+import { useEffect, useMemo, useRef, useState, type FocusEvent, type KeyboardEvent } from "react";
 
 type Product = {
   id: number;
@@ -36,6 +37,7 @@ export function AdminProductsTable({
   const router = useRouter();
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [imagePreview, setImagePreview] = useState<{ src: string; alt: string } | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const categoryLabelMap = useMemo(() => new Map(categoryOptions), [categoryOptions]);
 
@@ -105,6 +107,15 @@ export function AdminProductsTable({
     event.currentTarget.form?.requestSubmit();
   }
 
+  useEffect(() => {
+    if (!imagePreview) return;
+    function onKey(event: WindowEventMap["keydown"]) {
+      if (event.key === "Escape") setImagePreview(null);
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [imagePreview]);
+
   return (
     <>
       <div className="flex justify-end border-b border-slate-200 px-4 py-3">
@@ -121,11 +132,23 @@ export function AdminProductsTable({
         </form>
       </div>
 
-      <div className="overflow-x-auto">
-        <table className="min-w-full text-left text-sm">
-          <thead className="bg-slate-50 text-slate-700">
+      <div className="overflow-x-auto rounded-lg border border-slate-200">
+        <table className="w-full min-w-[56rem] table-fixed border-collapse text-left text-sm">
+          <colgroup>
+            <col className="w-11" />
+            <col className="w-[7.25rem]" />
+            <col className="w-[19%]" />
+            <col className="w-16" />
+            <col className="w-[4.5rem]" />
+            <col className="w-[7rem]" />
+            <col className="w-[26%]" />
+            <col className="w-[6.25rem]" />
+            <col className="w-14" />
+            <col className="w-[7rem]" />
+          </colgroup>
+          <thead className="bg-slate-50 text-xs font-semibold text-slate-600">
             <tr>
-              <th className="border-b border-slate-200 px-4 py-3 font-medium">
+              <th className="border-b border-slate-200 px-2 py-2.5">
                 <input
                   type="checkbox"
                   checked={allSelected}
@@ -133,24 +156,25 @@ export function AdminProductsTable({
                   aria-label="全选产品"
                 />
               </th>
-              <th className="border-b border-slate-200 px-4 py-3 font-medium">型号</th>
-              <th className="border-b border-slate-200 px-4 py-3 font-medium">分类</th>
-              <th className="border-b border-slate-200 px-4 py-3 font-medium">排序</th>
-              <th className="border-b border-slate-200 px-4 py-3 font-medium">图片</th>
-              <th className="border-b border-slate-200 px-4 py-3 font-medium">尺寸</th>
-              <th className="border-b border-slate-200 px-4 py-3 font-medium">包装规格</th>
-              <th className="border-b border-slate-200 px-4 py-3 font-medium">库存状态</th>
-              <th className="border-b border-slate-200 px-4 py-3 font-medium">库存数量</th>
-              <th className="border-b border-slate-200 px-4 py-3 font-medium">图片管理</th>
-              <th className="border-b border-slate-200 px-4 py-3 font-medium">编辑</th>
+              <th className="border-b border-slate-200 px-2 py-2.5 whitespace-nowrap">型号</th>
+              <th className="border-b border-slate-200 px-2 py-2.5 whitespace-nowrap">分类</th>
+              <th className="border-b border-slate-200 px-2 py-2.5 whitespace-nowrap">排序</th>
+              <th className="border-b border-slate-200 px-2 py-2.5 whitespace-nowrap">图片</th>
+              <th className="border-b border-slate-200 px-2 py-2.5 whitespace-nowrap">尺寸</th>
+              <th className="border-b border-slate-200 px-2 py-2.5 whitespace-nowrap">包装规格</th>
+              <th className="border-b border-slate-200 px-2 py-2.5 whitespace-nowrap">库存状态</th>
+              <th className="border-b border-slate-200 px-2 py-2.5 whitespace-nowrap">库存数</th>
+              <th className="border-b border-slate-200 px-2 py-2.5 whitespace-nowrap">操作</th>
             </tr>
           </thead>
           <tbody>
             {sortedProducts.map((product) => {
               const checked = selectedIds.includes(product.id);
+              const categoryLabel =
+                categoryLabelMap.get(product.category || "") || product.category || "-";
               return (
-                <tr key={product.id} className="align-top text-slate-800">
-                  <td className="border-b border-slate-100 px-4 py-4">
+                <tr key={product.id} className="align-middle text-slate-800">
+                  <td className="border-b border-slate-100 px-2 py-2.5">
                     <input
                       type="checkbox"
                       checked={checked}
@@ -158,11 +182,17 @@ export function AdminProductsTable({
                       aria-label={`选择产品 ${product.model || product.id}`}
                     />
                   </td>
-                  <td className="border-b border-slate-100 px-4 py-4 font-medium">{product.model || "-"}</td>
-                  <td className="border-b border-slate-100 px-4 py-4">
-                    {categoryLabelMap.get(product.category || "") || product.category || "-"}
+                  <td className="border-b border-slate-100 px-2 py-2.5 font-medium">
+                    <span className="block truncate" title={product.model || undefined}>
+                      {product.model || "-"}
+                    </span>
                   </td>
-                  <td className="border-b border-slate-100 px-4 py-4">
+                  <td className="border-b border-slate-100 px-2 py-2.5 min-w-0">
+                    <span className="block truncate text-xs leading-snug" title={categoryLabel}>
+                      {categoryLabel}
+                    </span>
+                  </td>
+                  <td className="border-b border-slate-100 px-1 py-2.5">
                     <form
                       action={async (formData) => {
                         await updateSortOrderAction(formData);
@@ -179,52 +209,74 @@ export function AdminProductsTable({
                         onBlur={handleSortOrderBlur}
                         onFocus={(event) => event.currentTarget.select()}
                         title="点击可编辑，按回车保存"
-                        className="w-20 rounded-md border border-transparent bg-transparent px-2 py-1 text-sm text-slate-800 outline-none transition focus:border-slate-300 focus:bg-white focus:ring-2 focus:ring-slate-300"
+                        className="w-full min-w-0 rounded-md border border-transparent bg-transparent px-1 py-1 text-center text-sm tabular-nums text-slate-800 outline-none transition focus:border-slate-300 focus:bg-white focus:ring-2 focus:ring-slate-300"
                       />
                     </form>
                   </td>
-                  <td className="border-b border-slate-100 px-4 py-4">
+                  <td className="border-b border-slate-100 px-2 py-2.5">
                     {product.image_url ? (
-                      <Image
-                        src={product.image_url}
-                        alt={`${product.model || "product"} image`}
-                        width={64}
-                        height={64}
-                        className="h-16 w-16 rounded border border-slate-200 object-cover"
-                      />
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setImagePreview({
+                            src: product.image_url as string,
+                            alt: `${product.model || "product"} 大图`,
+                          })
+                        }
+                        className="group mx-auto flex rounded-md border border-slate-200 bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-500"
+                        aria-label={`放大查看 ${product.model || "产品"} 图片`}
+                      >
+                        <Image
+                          src={product.image_url}
+                          alt=""
+                          width={56}
+                          height={56}
+                          className="h-14 w-14 rounded-sm object-cover transition group-hover:opacity-90"
+                          aria-hidden
+                        />
+                      </button>
                     ) : (
                       <span className="text-xs text-slate-400">未上传</span>
                     )}
                   </td>
-                  <td className="border-b border-slate-100 px-4 py-4">{product.size || "-"}</td>
-                  <td className="border-b border-slate-100 px-4 py-4">{product.packing_spec || "-"}</td>
-                  <td className="border-b border-slate-100 px-4 py-4">{product.stock_status || "-"}</td>
-                  <td className="border-b border-slate-100 px-4 py-4">{product.stock_quantity ?? "-"}</td>
-                  <td className="border-b border-slate-100 px-4 py-4">
-                    {product.image_url ? (
-                      <div className="flex gap-2">
+                  <td className="border-b border-slate-100 px-2 py-2.5 whitespace-nowrap text-xs tabular-nums">
+                    {product.size || "-"}
+                  </td>
+                  <td className="border-b border-slate-100 px-2 py-2.5 min-w-0">
+                    <span
+                      className="block truncate text-xs leading-snug tabular-nums"
+                      title={product.packing_spec || undefined}
+                    >
+                      {product.packing_spec || "-"}
+                    </span>
+                  </td>
+                  <td className="border-b border-slate-100 px-2 py-2.5 whitespace-nowrap text-xs">
+                    {product.stock_status || "-"}
+                  </td>
+                  <td className="border-b border-slate-100 px-2 py-2.5 text-center text-xs tabular-nums whitespace-nowrap">
+                    {product.stock_quantity ?? "-"}
+                  </td>
+                  <td className="border-b border-slate-100 px-2 py-2.5">
+                    <div className="flex flex-col gap-1.5">
+                      {product.image_url ? (
                         <form action={clearImageAction}>
                           <input type="hidden" name="id" value={product.id} />
                           <button
                             type="submit"
-                            className="rounded-md border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-700 transition hover:bg-amber-100"
+                            className="w-full shrink-0 rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-[11px] font-medium leading-tight text-amber-800 transition hover:bg-amber-100"
                           >
                             移除图片
                           </button>
                         </form>
-                      </div>
-                    ) : (
-                      <span className="text-xs text-slate-400">-</span>
-                    )}
-                  </td>
-                  <td className="border-b border-slate-100 px-4 py-4">
-                    <button
-                      type="button"
-                      onClick={() => setEditingProduct(product)}
-                      className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-50"
-                    >
-                      编辑
-                    </button>
+                      ) : null}
+                      <button
+                        type="button"
+                        onClick={() => setEditingProduct(product)}
+                        className="w-full shrink-0 rounded-md border border-slate-300 bg-white px-2 py-1 text-[11px] font-medium leading-tight text-slate-700 transition hover:bg-slate-50"
+                      >
+                        编辑
+                      </button>
+                    </div>
                   </td>
                 </tr>
               );
@@ -305,28 +357,26 @@ export function AdminProductsTable({
                 </div>
               </div>
               <div>
-                <p className="mb-1 text-xs font-medium text-slate-600">包装长度 (m)</p>
+                <p className="mb-1 text-xs font-medium text-slate-600">包装长度 (m，可选)</p>
                 <input
                   name="packing_length"
-                  required
                   type="number"
                   min="0.1"
                   step="0.01"
                   defaultValue={parsePacking(editingProduct.packing_spec).length}
-                  placeholder="长度(m)"
+                  placeholder="与 pcs 同时填写则生成包装说明"
                   className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none ring-slate-400 focus:ring-2"
                 />
               </div>
               <div>
-                <p className="mb-1 text-xs font-medium text-slate-600">每箱 pcs 数量</p>
+                <p className="mb-1 text-xs font-medium text-slate-600">每箱 pcs（可选）</p>
                 <input
                   name="packing_pcs"
-                  required
                   type="number"
                   min="1"
                   step="1"
                   defaultValue={parsePacking(editingProduct.packing_spec).pcs}
-                  placeholder="pcs 数量"
+                  placeholder="与长度同时填写则生成包装说明"
                   className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none ring-slate-400 focus:ring-2"
                 />
               </div>
@@ -407,6 +457,39 @@ export function AdminProductsTable({
           </div>
         </div>
       ) : null}
+
+      {imagePreview && typeof document !== "undefined"
+        ? createPortal(
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-label="图片预览"
+              className="fixed inset-0 z-[100] flex cursor-zoom-out items-center justify-center bg-slate-950/80 p-4 backdrop-blur-sm"
+              onClick={() => setImagePreview(null)}
+            >
+              <button
+                type="button"
+                onClick={() => setImagePreview(null)}
+                className="absolute right-4 top-4 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white/95 text-xl leading-none text-slate-800 shadow-md hover:bg-white"
+                aria-label="关闭预览"
+              >
+                ×
+              </button>
+              <div
+                className="relative max-h-[90vh] max-w-[min(92vw,1200px)] cursor-default"
+                onClick={(event) => event.stopPropagation()}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element -- lightbox; arbitrary admin URLs */}
+                <img
+                  src={imagePreview.src}
+                  alt={imagePreview.alt}
+                  className="max-h-[85vh] w-auto max-w-full rounded-lg object-contain shadow-2xl ring-1 ring-white/10"
+                />
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
     </>
   );
 }

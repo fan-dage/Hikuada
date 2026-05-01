@@ -8,6 +8,8 @@ const navItems = [
   { href: "/admin", label: "询盘管理", exact: true },
   { href: "/admin/products", label: "产品管理", exact: true },
   { href: "/admin/categories", label: "分类管理", exact: true },
+  { href: "/admin/tags", label: "标签管理", exact: true },
+  { href: "/admin/banner", label: "横幅管理", exact: true },
   { href: "/admin/customers", label: "客户管理", exact: true },
 ];
 

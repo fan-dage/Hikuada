@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { getSupabaseServerClient } from "@/lib/supabase";
+import { AddToInquiryListButton } from "@/components/add-to-inquiry-list-button";
+import { ProductCardSpecs } from "@/components/product-card-specs";
 import { ProductImagePreview } from "@/components/product-image-preview";
 import { SiteHeader } from "@/components/site-header";
 
@@ -38,13 +40,21 @@ export default async function ProductsPage({
   const from = (currentPage - 1) * PRODUCTS_PER_PAGE;
   const to = from + PRODUCTS_PER_PAGE - 1;
   const validCategory =
-    category === "ps_moldings" || category === "frame_machinery_consumables" ? category : null;
-  const categoryTitle =
-    validCategory === "frame_machinery_consumables" ? "Frame Machinery & Consumables" : "Picture Frame Moldings";
-  const categorySubtitle =
-    validCategory === "frame_machinery_consumables"
-      ? "Browse machinery and consumables for frame manufacturing workflows."
-      : "Browse complete in-stock moldings from Hikuada factory.";
+    category === "ps_moldings" || category === "frame_machinery_consumables" || category === "finished_products_others"
+      ? category
+      : null;
+  let categoryTitle = "More Product Series";
+  let categorySubtitle = "Browse complete in-stock models from Hikuada factory.";
+  if (validCategory === "ps_moldings") {
+    categoryTitle = "Picture Frame Moldings";
+    categorySubtitle = "Browse complete in-stock moldings from Hikuada factory.";
+  } else if (validCategory === "frame_machinery_consumables") {
+    categoryTitle = "Frame Machinery & Consumables";
+    categorySubtitle = "Browse machinery and consumables for frame manufacturing workflows.";
+  } else if (validCategory === "finished_products_others") {
+    categoryTitle = "Finished Products & Other Products";
+    categorySubtitle = "Finished product lines and other wholesale-ready product options.";
+  }
 
   const supabase = getSupabaseServerClient();
   let query = supabase
@@ -57,6 +67,8 @@ export default async function ProductsPage({
     query = query.or("category.eq.ps_moldings,category.is.null");
   } else if (validCategory === "frame_machinery_consumables") {
     query = query.eq("category", "frame_machinery_consumables");
+  } else if (validCategory === "finished_products_others") {
+    query = query.eq("category", "finished_products_others");
   }
 
   const { data, count } = await query.range(from, to);
@@ -86,7 +98,7 @@ export default async function ProductsPage({
           <Link
             href="/products?category=ps_moldings"
             className={`rounded-lg border px-4 py-2 text-sm font-medium transition ${
-              validCategory !== "frame_machinery_consumables"
+              validCategory === "ps_moldings"
                 ? "border-slate-900 bg-slate-900 text-white"
                 : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
             }`}
@@ -102,6 +114,16 @@ export default async function ProductsPage({
             }`}
           >
             Frame Machinery & Consumables
+          </Link>
+          <Link
+            href="/products?category=finished_products_others"
+            className={`rounded-lg border px-4 py-2 text-sm font-medium transition ${
+              validCategory === "finished_products_others"
+                ? "border-slate-900 bg-slate-900 text-white"
+                : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+            }`}
+          >
+            Finished & Other Products
           </Link>
         </div>
 
@@ -128,12 +150,8 @@ export default async function ProductsPage({
                 </div>
                 <div className="space-y-2 p-5">
                   <h3 className="text-xl font-bold text-slate-900">{product.model || "-"}</h3>
-                  <p className="text-sm text-slate-700">
-                    <span className="font-semibold">Size:</span> {product.size || "-"}
-                  </p>
-                  <p className="text-sm text-slate-700">
-                    <span className="font-semibold">Packing:</span> {product.packing_spec || "-"}
-                  </p>
+                  <ProductCardSpecs size={product.size} packingSpec={product.packing_spec} />
+                  <AddToInquiryListButton product={product} />
                 </div>
               </article>
             ))}

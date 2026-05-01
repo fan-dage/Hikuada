@@ -1,12 +1,31 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useCallback, useEffect, useState } from "react";
+import { INQUIRY_PREFILL_EVENT, INQUIRY_PREFILL_SESSION_KEY } from "@/lib/inquiry-list";
 
 type SubmitStatus = "idle" | "submitting" | "success" | "error";
 
 export function InquiryForm() {
   const [status, setStatus] = useState<SubmitStatus>("idle");
   const [errorText, setErrorText] = useState("");
+  const [message, setMessage] = useState("");
+
+  const consumePrefill = useCallback(() => {
+    try {
+      const raw = sessionStorage.getItem(INQUIRY_PREFILL_SESSION_KEY);
+      if (!raw) return;
+      sessionStorage.removeItem(INQUIRY_PREFILL_SESSION_KEY);
+      setMessage(raw);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  useEffect(() => {
+    consumePrefill();
+    window.addEventListener(INQUIRY_PREFILL_EVENT, consumePrefill);
+    return () => window.removeEventListener(INQUIRY_PREFILL_EVENT, consumePrefill);
+  }, [consumePrefill]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -33,6 +52,7 @@ export function InquiryForm() {
       }
 
       form.reset();
+      setMessage("");
       setStatus("success");
     } catch (error) {
       setStatus("error");
@@ -84,6 +104,8 @@ export function InquiryForm() {
         name="message"
         required
         rows={4}
+        value={message}
+        onChange={(event) => setMessage(event.target.value)}
         placeholder="Your demand (model, quantity, destination)..."
         className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none ring-amber-400 placeholder:text-slate-400 focus:ring-2"
       />

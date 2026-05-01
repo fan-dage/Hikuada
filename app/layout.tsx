@@ -1,5 +1,8 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { Suspense } from "react";
+import { FacebookPixel } from "@/components/FacebookPixel";
+import { SiteProviders } from "@/components/site-providers";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -18,6 +21,10 @@ export const metadata: Metadata = {
     "Hikuada is a professional PS moldings manufacturer serving wholesale buyers in Vietnam and Southeast Asia.",
 };
 
+export const viewport: Viewport = {
+  viewportFit: "cover",
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -28,7 +35,12 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="flex min-h-full flex-col">
+        <Suspense fallback={null}>
+          <FacebookPixel />
+        </Suspense>
+        <SiteProviders>{children}</SiteProviders>
+      </body>
     </html>
   );
 }

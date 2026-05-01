@@ -24,6 +24,16 @@ export default async function AdminPage() {
 
   const leads = (data || []) as Lead[];
 
+  const { data: productRows } = await supabase.from("hikuada_products").select("model, image_url");
+  const modelToImageUrl: Record<string, string> = {};
+  for (const row of productRows || []) {
+    const model = typeof row.model === "string" ? row.model.trim() : "";
+    const url = row.image_url;
+    if (model && typeof url === "string" && url.length > 0) {
+      modelToImageUrl[model] = url;
+    }
+  }
+
   return (
     <div>
       <header className="mb-4">
@@ -37,7 +47,7 @@ export default async function AdminPage() {
         ) : leads.length === 0 ? (
           <p className="p-6 text-sm text-slate-600">No leads yet.</p>
         ) : (
-          <AdminLeadsTable leads={leads} />
+          <AdminLeadsTable leads={leads} modelToImageUrl={modelToImageUrl} />
         )}
       </section>
     </div>

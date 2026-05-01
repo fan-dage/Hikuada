@@ -45,6 +45,59 @@ async function removeLocalImage(imageUrl: string | null | undefined) {
   }
 }
 
+async function insertProductRow(
+  supabase: ReturnType<typeof getSupabaseServerClient>,
+  row: {
+    model: string;
+    category: string;
+    size: string;
+    packing_spec: string;
+    stock_status: string;
+    stock_quantity: number | null;
+    image_url: string | null;
+    sort_order?: number;
+  },
+) {
+  const withSort = { ...row };
+  let { error } = await supabase.from("hikuada_products").insert(withSort);
+  const msg = error?.message?.toLowerCase() ?? "";
+  if (
+    error &&
+    (msg.includes("sort_order") || msg.includes("schema cache") || error.code === "PGRST204")
+  ) {
+    const { sort_order: _omit, ...withoutSort } = withSort;
+    ({ error } = await supabase.from("hikuada_products").insert(withoutSort));
+  }
+  return { error };
+}
+
+async function updateProductRow(
+  supabase: ReturnType<typeof getSupabaseServerClient>,
+  id: number,
+  row: {
+    model: string;
+    category: string;
+    size: string;
+    packing_spec: string;
+    stock_status: string;
+    stock_quantity: number | null;
+    image_url: string | null;
+    sort_order?: number;
+  },
+) {
+  const withSort = { ...row };
+  let { error } = await supabase.from("hikuada_products").update(withSort).eq("id", id);
+  const msg = error?.message?.toLowerCase() ?? "";
+  if (
+    error &&
+    (msg.includes("sort_order") || msg.includes("schema cache") || error.code === "PGRST204")
+  ) {
+    const { sort_order: _omit, ...withoutSort } = withSort;
+    ({ error } = await supabase.from("hikuada_products").update(withoutSort).eq("id", id));
+  }
+  return { error };
+}
+
 async function createProduct(formData: FormData) {
   "use server";
 
@@ -62,21 +115,27 @@ async function createProduct(formData: FormData) {
   const sizeWidth = sizeWidthRaw ? Number(sizeWidthRaw) : NaN;
   const sizeHeight = sizeHeightRaw ? Number(sizeHeightRaw) : NaN;
   const size = Number.isNaN(sizeWidth) || Number.isNaN(sizeHeight) ? "" : `${sizeWidth} x ${sizeHeight} mm`;
-  const packingLength = packingLengthRaw ? Number(packingLengthRaw) : NaN;
-  const packingPcs = packingPcsRaw ? Number(packingPcsRaw) : NaN;
-  const packingSpec = Number.isNaN(packingLength) || Number.isNaN(packingPcs)
-    ? ""
-    : `${packingLength}m x ${packingPcs} pcs / carton`;
+  let packingSpec = "";
+  if (packingLengthRaw || packingPcsRaw) {
+    const packingLength = packingLengthRaw ? Number(packingLengthRaw) : NaN;
+    const packingPcs = packingPcsRaw ? Number(packingPcsRaw) : NaN;
+    if (
+      Number.isNaN(packingLength) ||
+      Number.isNaN(packingPcs) ||
+      packingLength <= 0 ||
+      packingPcs <= 0
+    ) {
+      return;
+    }
+    packingSpec = `${packingLength}m x ${packingPcs} pcs / carton`;
+  }
   const stockQuantity = stockQuantityRaw ? Number(stockQuantityRaw) : null;
   const sortOrder = Number(sortOrderRaw);
 
-  if (!model || !sizeWidthRaw || !sizeHeightRaw || !size || !packingLengthRaw || !packingPcsRaw || !packingSpec) {
+  if (!model || !sizeWidthRaw || !sizeHeightRaw || !size) {
     return;
   }
   if (stockQuantityRaw && Number.isNaN(stockQuantity)) {
-    return;
-  }
-  if (Number.isNaN(packingLength) || Number.isNaN(packingPcs) || packingLength <= 0 || packingPcs <= 0) {
     return;
   }
   if (Number.isNaN(sizeWidth) || Number.isNaN(sizeHeight) || sizeWidth <= 0 || sizeHeight <= 0) {
@@ -86,23 +145,46 @@ async function createProduct(formData: FormData) {
     return;
   }
 
-  const supabase = getSupabaseServerClient();
-  let imageUrl: string | null = existingImageUrl || null;
-  if (imageFile instanceof File && imageFile.size > 0) {
-    imageUrl = await saveProductImage(imageFile);
-  }
-  await supabase.from("hikuada_products").insert({
-    model,
-    category,
-    size,
-    packing_spec: packingSpec,
-    sort_order: sortOrder,
-    stock_status: stockStatus,
-    stock_quantity: stockQuantity,
-    image_url: imageUrl,
-  });
+  try {
+    let supabase;
+    try {
+      supabase = getSupabaseServerClient();
+    } catch {
+      throw new Error("缺少 Supabase 配置（NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY），请检查环境变量。");
+    }
 
-  revalidatePath("/admin/products");
+    let imageUrl: string | null = existingImageUrl || null;
+    if (imageFile instanceof File && imageFile.size > 0) {
+      try {
+        imageUrl = await saveProductImage(imageFile);
+      } catch (err) {
+        const detail = err instanceof Error ? err.message : String(err);
+        throw new Error(`图片上传失败（请确认服务器对本机目录有写入权限）：${detail}`);
+      }
+    }
+
+    const { error } = await insertProductRow(supabase, {
+      model,
+      category,
+      size,
+      packing_spec: packingSpec,
+      sort_order: sortOrder,
+      stock_status: stockStatus,
+      stock_quantity: stockQuantity,
+      image_url: imageUrl,
+    });
+
+    if (error) {
+      throw new Error(`数据库保存失败：${error.message}`);
+    }
+
+    revalidatePath("/admin/products");
+    revalidatePath("/");
+    revalidatePath("/products");
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "保存失败";
+    throw new Error(message);
+  }
 }
 
 async function deleteProducts(formData: FormData) {
@@ -166,26 +248,35 @@ async function updateProduct(formData: FormData) {
   const imageFile = formData.get("image_file");
   const existingImageUrl = formData.get("existing_image_url")?.toString().trim() || "";
 
-  if (!id || !model || !sizeWidthRaw || !sizeHeightRaw || !packingLengthRaw || !packingPcsRaw) {
+  if (!id || !model || !sizeWidthRaw || !sizeHeightRaw) {
     return;
   }
 
   const sizeWidth = Number(sizeWidthRaw);
   const sizeHeight = Number(sizeHeightRaw);
-  const packingLength = Number(packingLengthRaw);
-  const packingPcs = Number(packingPcsRaw);
   const stockQuantity = stockQuantityRaw ? Number(stockQuantityRaw) : null;
   const sortOrder = Number(sortOrderRaw);
+
+  let packingSpec = "";
+  if (packingLengthRaw || packingPcsRaw) {
+    const packingLength = packingLengthRaw ? Number(packingLengthRaw) : NaN;
+    const packingPcs = packingPcsRaw ? Number(packingPcsRaw) : NaN;
+    if (
+      Number.isNaN(packingLength) ||
+      Number.isNaN(packingPcs) ||
+      packingLength <= 0 ||
+      packingPcs <= 0
+    ) {
+      return;
+    }
+    packingSpec = `${packingLength}m x ${packingPcs} pcs / carton`;
+  }
 
   if (
     Number.isNaN(sizeWidth) ||
     Number.isNaN(sizeHeight) ||
-    Number.isNaN(packingLength) ||
-    Number.isNaN(packingPcs) ||
     sizeWidth <= 0 ||
-    sizeHeight <= 0 ||
-    packingLength <= 0 ||
-    packingPcs <= 0
+    sizeHeight <= 0
   ) {
     return;
   }
@@ -197,26 +288,35 @@ async function updateProduct(formData: FormData) {
   }
 
   const size = `${sizeWidth} x ${sizeHeight} mm`;
-  const packingSpec = `${packingLength}m x ${packingPcs} pcs / carton`;
 
-  const supabase = getSupabaseServerClient();
-  const { data: currentProduct } = await supabase
-    .from("hikuada_products")
-    .select("image_url")
-    .eq("id", id)
-    .single();
+  try {
+    let supabase;
+    try {
+      supabase = getSupabaseServerClient();
+    } catch {
+      throw new Error("缺少 Supabase 配置（NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY），请检查环境变量。");
+    }
 
-  let nextImageUrl: string | null = currentProduct?.image_url || null;
-  if (existingImageUrl) {
-    nextImageUrl = existingImageUrl;
-  }
-  if (imageFile instanceof File && imageFile.size > 0) {
-    nextImageUrl = await saveProductImage(imageFile);
-  }
+    const { data: currentProduct } = await supabase
+      .from("hikuada_products")
+      .select("image_url")
+      .eq("id", id)
+      .single();
 
-  await supabase
-    .from("hikuada_products")
-    .update({
+    let nextImageUrl: string | null = currentProduct?.image_url || null;
+    if (existingImageUrl) {
+      nextImageUrl = existingImageUrl;
+    }
+    try {
+      if (imageFile instanceof File && imageFile.size > 0) {
+        nextImageUrl = await saveProductImage(imageFile);
+      }
+    } catch (err) {
+      const detail = err instanceof Error ? err.message : String(err);
+      throw new Error(`图片上传失败：${detail}`);
+    }
+
+    const { error: updateError } = await updateProductRow(supabase, id, {
       model,
       category,
       size,
@@ -225,20 +325,29 @@ async function updateProduct(formData: FormData) {
       stock_status: stockStatus,
       stock_quantity: stockQuantity,
       image_url: nextImageUrl,
-    })
-    .eq("id", id);
+    });
 
-  if (
-    currentProduct?.image_url &&
-    currentProduct.image_url !== nextImageUrl &&
-    currentProduct.image_url.startsWith("/uploads/products/")
-  ) {
-    await removeLocalImage(currentProduct.image_url);
+    if (updateError) {
+      throw new Error(`数据库更新失败：${updateError.message}`);
+    }
+
+    if (
+      currentProduct?.image_url &&
+      currentProduct.image_url !== nextImageUrl &&
+      currentProduct.image_url.startsWith("/uploads/products/")
+    ) {
+      await removeLocalImage(currentProduct.image_url);
+    }
+
+    revalidatePath("/admin/products");
+    revalidatePath("/admin");
+    revalidatePath("/admin/home");
+    revalidatePath("/");
+    revalidatePath("/products");
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "更新失败";
+    throw new Error(message);
   }
-
-  revalidatePath("/admin/products");
-  revalidatePath("/admin");
-  revalidatePath("/admin/home");
 }
 
 async function updateProductSortOrder(formData: FormData) {
@@ -251,14 +360,26 @@ async function updateProductSortOrder(formData: FormData) {
     return;
   }
 
-  const supabase = getSupabaseServerClient();
-  await supabase.from("hikuada_products").update({ sort_order: sortOrder }).eq("id", id);
+  try {
+    let supabase;
+    try {
+      supabase = getSupabaseServerClient();
+    } catch {
+      throw new Error("缺少 Supabase 配置，请检查环境变量。");
+    }
+    const { error } = await supabase.from("hikuada_products").update({ sort_order: sortOrder }).eq("id", id);
+    if (error) {
+      throw new Error(`排序保存失败：${error.message}`);
+    }
 
-  revalidatePath("/admin/products");
-  revalidatePath("/admin");
-  revalidatePath("/admin/home");
-  revalidatePath("/");
-  revalidatePath("/products");
+    revalidatePath("/admin/products");
+    revalidatePath("/admin");
+    revalidatePath("/admin/home");
+    revalidatePath("/");
+    revalidatePath("/products");
+  } catch (err) {
+    throw new Error(err instanceof Error ? err.message : "排序保存失败");
+  }
 }
 
 export default async function AdminProductsPage() {
@@ -283,6 +404,7 @@ export default async function AdminProductsPage() {
       : [
           { slug: "ps_moldings", name: "PS Moldings" },
           { slug: "frame_machinery_consumables", name: "Frame Making Machinery & Consumables" },
+          { slug: "finished_products_others", name: "Finished Products & Other Products" },
         ];
   const existingImageOptions = Array.from(
     new Map(
@@ -340,20 +462,18 @@ export default async function AdminProductsPage() {
           </div>
           <input
             name="packing_length"
-            required
             type="number"
             min="0.1"
             step="0.01"
-            placeholder="长度（m，例如 2.9）"
+            placeholder="包装长度 m（可选，需与 pcs 同时填写）"
             className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none ring-slate-400 focus:ring-2"
           />
           <input
             name="packing_pcs"
-            required
             type="number"
             min="1"
             step="1"
-            placeholder="pcs 数量（例如 20）"
+            placeholder="每箱 pcs（可选，需与长度同时填写）"
             className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none ring-slate-400 focus:ring-2"
           />
           <input
