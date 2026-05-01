@@ -117,34 +117,27 @@ async function createProduct(formData: FormData) {
   const size = Number.isNaN(sizeWidth) || Number.isNaN(sizeHeight) ? "" : `${sizeWidth} x ${sizeHeight} mm`;
   let packingSpec = "";
   if (packingLengthRaw || packingPcsRaw) {
-    if (!packingLengthRaw || !packingPcsRaw) {
-      return;
-    }
     const packingLength = packingLengthRaw ? Number(packingLengthRaw) : NaN;
     const packingPcs = packingPcsRaw ? Number(packingPcsRaw) : NaN;
     if (
-      Number.isNaN(packingLength) ||
-      Number.isNaN(packingPcs) ||
-      packingLength <= 0 ||
-      packingPcs <= 0
+      !Number.isNaN(packingLength) &&
+      !Number.isNaN(packingPcs) &&
+      packingLength > 0 &&
+      packingPcs > 0
     ) {
-      return;
+      packingSpec = `${packingLength}m x ${packingPcs} pcs / carton`;
     }
-    packingSpec = `${packingLength}m x ${packingPcs} pcs / carton`;
   }
-  const stockQuantity = stockQuantityRaw ? Number(stockQuantityRaw) : null;
-  const sortOrder = Number(sortOrderRaw);
+  const parsedStockQuantity = stockQuantityRaw ? Number(stockQuantityRaw) : null;
+  const stockQuantity =
+    parsedStockQuantity !== null && Number.isNaN(parsedStockQuantity) ? null : parsedStockQuantity;
+  const parsedSortOrder = Number(sortOrderRaw);
+  const sortOrder = Number.isNaN(parsedSortOrder) || parsedSortOrder < 0 ? 100 : parsedSortOrder;
 
   if (!model || !sizeWidthRaw || !sizeHeightRaw || !size) {
     return;
   }
-  if (stockQuantityRaw && Number.isNaN(stockQuantity)) {
-    return;
-  }
   if (Number.isNaN(sizeWidth) || Number.isNaN(sizeHeight) || sizeWidth <= 0 || sizeHeight <= 0) {
-    return;
-  }
-  if (Number.isNaN(sortOrder) || sortOrder < 0) {
     return;
   }
 
@@ -258,25 +251,24 @@ async function updateProduct(formData: FormData) {
 
   const sizeWidth = Number(sizeWidthRaw);
   const sizeHeight = Number(sizeHeightRaw);
-  const stockQuantity = stockQuantityRaw ? Number(stockQuantityRaw) : null;
-  const sortOrder = Number(sortOrderRaw);
+  const parsedStockQuantity = stockQuantityRaw ? Number(stockQuantityRaw) : null;
+  const stockQuantity =
+    parsedStockQuantity !== null && Number.isNaN(parsedStockQuantity) ? null : parsedStockQuantity;
+  const parsedSortOrder = Number(sortOrderRaw);
+  const sortOrder = Number.isNaN(parsedSortOrder) || parsedSortOrder < 0 ? 100 : parsedSortOrder;
 
   let packingSpec = "";
   if (packingLengthRaw || packingPcsRaw) {
-    if (!packingLengthRaw || !packingPcsRaw) {
-      return;
-    }
     const packingLength = packingLengthRaw ? Number(packingLengthRaw) : NaN;
     const packingPcs = packingPcsRaw ? Number(packingPcsRaw) : NaN;
     if (
-      Number.isNaN(packingLength) ||
-      Number.isNaN(packingPcs) ||
-      packingLength <= 0 ||
-      packingPcs <= 0
+      !Number.isNaN(packingLength) &&
+      !Number.isNaN(packingPcs) &&
+      packingLength > 0 &&
+      packingPcs > 0
     ) {
-      return;
+      packingSpec = `${packingLength}m x ${packingPcs} pcs / carton`;
     }
-    packingSpec = `${packingLength}m x ${packingPcs} pcs / carton`;
   }
 
   if (
@@ -285,12 +277,6 @@ async function updateProduct(formData: FormData) {
     sizeWidth <= 0 ||
     sizeHeight <= 0
   ) {
-    return;
-  }
-  if (stockQuantityRaw && Number.isNaN(stockQuantity)) {
-    return;
-  }
-  if (Number.isNaN(sortOrder) || sortOrder < 0) {
     return;
   }
 
