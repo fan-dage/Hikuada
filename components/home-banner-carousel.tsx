@@ -40,21 +40,23 @@ export function HomeBannerCarousel({ slides }: { slides: BannerSlide[] }) {
   if (count === 1) {
     const s = slides[0];
     return (
-      <Image
-        src={s.src}
-        alt={s.alt}
-        width={2600}
-        height={1200}
-        className="h-[42vh] min-h-[320px] w-full object-cover md:h-[56vh]"
-        priority
-        unoptimized={s.src.startsWith(BANNER_UPLOAD_PREFIX)}
-      />
+      <div className="relative z-0 h-[42vh] min-h-[320px] w-full md:h-[56vh]">
+        <Image
+          src={s.src}
+          alt={s.alt}
+          fill
+          className="object-cover"
+          sizes="100vw"
+          priority
+          unoptimized={s.src.startsWith(BANNER_UPLOAD_PREFIX)}
+        />
+      </div>
     );
   }
 
   return (
     <div
-      className="relative h-[42vh] min-h-[320px] w-full md:h-[56vh]"
+      className="relative z-0 h-[42vh] min-h-[320px] w-full md:h-[56vh]"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
     >

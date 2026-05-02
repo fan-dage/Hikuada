@@ -122,8 +122,9 @@ export default async function Home({
 
       <section className="relative z-0 w-full overflow-hidden border-y border-slate-200">
         <HomeBannerCarousel slides={bannerSlides} />
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-slate-950/45 via-slate-900/15 to-transparent" />
-        <div className="pointer-events-none absolute inset-0">
+        {/* z-10 keeps headline/gradient above carousel slides (slides use z-[1] internally). */}
+        <div className="pointer-events-none absolute inset-0 z-10 bg-gradient-to-r from-slate-950/45 via-slate-900/15 to-transparent" />
+        <div className="pointer-events-none absolute inset-0 z-10">
           <div className="mx-auto flex h-full max-w-6xl items-center px-6">
             <div className="max-w-3xl space-y-6 pt-2 text-white">
               <p className="inline-block rounded-full border border-white/40 bg-white/10 px-3 py-1 text-xs font-medium tracking-wide text-white">
