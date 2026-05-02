@@ -4,6 +4,7 @@ import { HomeBannerCarousel } from "@/components/home-banner-carousel";
 import { getSupabaseServerClient } from "@/lib/supabase";
 import { ProductCardSpecs } from "@/components/product-card-specs";
 import { ProductImagePreview } from "@/components/product-image-preview";
+import { productCardImageObjectFit } from "@/lib/product-card-image-fit";
 import Link from "next/link";
 import { SiteHeader } from "@/components/site-header";
 import Image from "next/image";
@@ -28,6 +29,7 @@ type Product = {
   packing_spec: string | null;
   stock_status: string | null;
   image_url: string | null;
+  image_object_fit: string | null;
 };
 
 export default async function Home({
@@ -73,7 +75,9 @@ export default async function Home({
 
   const { data, count } = await supabase
     .from("hikuada_products")
-    .select("id, model, category, sort_order, size, packing_spec, stock_status, image_url", { count: "exact" })
+    .select("id, model, category, sort_order, size, packing_spec, stock_status, image_url, image_object_fit", {
+      count: "exact",
+    })
     .order("sort_order", { ascending: true, nullsFirst: false })
     .order("created_at", { ascending: false })
     .or("category.eq.ps_moldings,category.is.null")
@@ -83,7 +87,7 @@ export default async function Home({
 
   const { data: machineryData } = await supabase
     .from("hikuada_products")
-    .select("id, model, category, sort_order, size, packing_spec, stock_status, image_url")
+    .select("id, model, category, sort_order, size, packing_spec, stock_status, image_url, image_object_fit")
     .eq("category", "frame_machinery_consumables")
     .order("sort_order", { ascending: true, nullsFirst: false })
     .order("created_at", { ascending: false })
@@ -92,7 +96,7 @@ export default async function Home({
 
   const { data: finishedData } = await supabase
     .from("hikuada_products")
-    .select("id, model, category, sort_order, size, packing_spec, stock_status, image_url")
+    .select("id, model, category, sort_order, size, packing_spec, stock_status, image_url, image_object_fit")
     .eq("category", "finished_products_others")
     .order("sort_order", { ascending: true, nullsFirst: false })
     .order("created_at", { ascending: false })
@@ -174,7 +178,11 @@ export default async function Home({
                   {product.stock_status || "In Stock"}
                 </span>
                 <div className="h-44 border-b border-slate-200 bg-slate-100 p-4">
-                  <ProductImagePreview src={product.image_url} alt={`${product.model || "Product"} image`} />
+                  <ProductImagePreview
+                    src={product.image_url}
+                    alt={`${product.model || "Product"} image`}
+                    objectFit={productCardImageObjectFit(product.image_object_fit)}
+                  />
                 </div>
                 <div className="space-y-2 p-5">
                   <h3 className="text-xl font-bold text-slate-900">{product.model || "-"}</h3>
@@ -221,7 +229,11 @@ export default async function Home({
                   {product.stock_status || "In Stock"}
                 </span>
                 <div className="h-44 border-b border-slate-200 bg-slate-100 p-4">
-                  <ProductImagePreview src={product.image_url} alt={`${product.model || "Product"} image`} />
+                  <ProductImagePreview
+                    src={product.image_url}
+                    alt={`${product.model || "Product"} image`}
+                    objectFit={productCardImageObjectFit(product.image_object_fit)}
+                  />
                 </div>
                 <div className="space-y-2 p-5">
                   <h3 className="text-xl font-bold text-slate-900">{product.model || "-"}</h3>
@@ -258,7 +270,11 @@ export default async function Home({
                   {product.stock_status || "In Stock"}
                 </span>
                 <div className="h-44 border-b border-slate-200 bg-slate-100 p-4">
-                  <ProductImagePreview src={product.image_url} alt={`${product.model || "Product"} image`} />
+                  <ProductImagePreview
+                    src={product.image_url}
+                    alt={`${product.model || "Product"} image`}
+                    objectFit={productCardImageObjectFit(product.image_object_fit)}
+                  />
                 </div>
                 <div className="space-y-2 p-5">
                   <h3 className="text-xl font-bold text-slate-900">{product.model || "-"}</h3>

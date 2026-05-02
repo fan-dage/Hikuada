@@ -7,9 +7,12 @@ import { createPortal } from "react-dom";
 export function ProductImagePreview({
   src,
   alt,
+  objectFit = "cover",
 }: {
   src: string | null;
   alt: string;
+  /** cover: fills area (may crop). contain: full image visible inside area. */
+  objectFit?: "cover" | "contain";
 }) {
   const [open, setOpen] = useState(false);
 
@@ -37,7 +40,11 @@ export function ProductImagePreview({
           width={600}
           height={400}
           draggable={false}
-          className="h-full w-full object-cover select-none [webkit-touch-callout:none]"
+          className={`h-full w-full select-none [webkit-touch-callout:none] ${
+            objectFit === "contain"
+              ? "bg-slate-100 object-contain object-center"
+              : "object-cover"
+          }`}
         />
       </button>
 

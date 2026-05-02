@@ -35,7 +35,7 @@ async function createBannerSlide(formData: FormData) {
     throw new Error("缺少 Supabase 配置。");
   }
 
-  const imageUrl = await saveBannerImage(imageFile);
+  const imageUrl = await saveBannerImage(supabase, imageFile);
   const { error } = await supabase.from("hikuada_banner_slides").insert({
     image_url: imageUrl,
     alt_text: altText,
@@ -78,10 +78,10 @@ async function updateBannerSlide(formData: FormData) {
   if (!imageUrl) throw new Error("记录不存在。");
 
   if (imageFile instanceof File && imageFile.size > 0) {
-    const uploaded = await saveBannerImage(imageFile);
+    const uploaded = await saveBannerImage(supabase, imageFile);
     const previous = imageUrl;
     imageUrl = uploaded;
-    await removeBannerUpload(previous.startsWith(BANNER_UPLOAD_PREFIX) ? previous : null);
+    await removeBannerUpload(supabase, previous);
   }
 
   const { error } = await supabase
@@ -117,7 +117,7 @@ async function deleteBannerSlide(formData: FormData) {
     .maybeSingle();
 
   const url = (row?.image_url as string | undefined)?.trim() || "";
-  await removeBannerUpload(url.startsWith(BANNER_UPLOAD_PREFIX) ? url : null);
+  await removeBannerUpload(supabase, url || null);
 
   const { error } = await supabase.from("hikuada_banner_slides").delete().eq("id", id);
   if (error) throw new Error(`删除失败：${error.message}`);
@@ -183,7 +183,9 @@ export default async function AdminBannerPage() {
           支持多张图片；首页<strong className="font-medium text-slate-800">启用且多于一张</strong>
           时自动轮播。请执行{" "}
           <code className="rounded bg-slate-100 px-1 text-xs">supabase/hikuada_site_banner_schema.sql</code>
-          （含从旧单图表迁移）。
+          （含从旧单图表迁移）。图片默认上传到 Supabase Storage（与产品图同一 Bucket，路径{" "}
+          <code className="rounded bg-slate-100 px-1 text-xs">site-banner/</code>
+          ）；线上环境不可写本地磁盘。
         </p>
       </header>
 

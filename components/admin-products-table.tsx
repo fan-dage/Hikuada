@@ -15,6 +15,7 @@ type Product = {
   stock_status: string | null;
   stock_quantity: number | null;
   image_url: string | null;
+  image_object_fit: string | null;
 };
 
 export function AdminProductsTable({
@@ -413,6 +414,22 @@ export function AdminProductsTable({
                   placeholder="库存数量（可选）"
                   className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none ring-slate-400 focus:ring-2"
                 />
+              </div>
+              <div>
+                <p className="mb-1 text-xs font-medium text-slate-600">卡片图片显示</p>
+                <select
+                  name="image_object_fit"
+                  defaultValue={
+                    editingProduct.image_object_fit?.trim().toLowerCase() === "contain"
+                      ? "contain"
+                      : "cover"
+                  }
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none ring-slate-400 focus:ring-2"
+                  title="前台卡片缩略图：铺满或完整显示"
+                >
+                  <option value="cover">铺满裁剪（默认）</option>
+                  <option value="contain">完整显示（留白）</option>
+                </select>
               </div>
               <div>
                 <p className="mb-1 text-xs font-medium text-slate-600">上传新图片（可选）</p>

@@ -14,6 +14,8 @@ type Product = {
   stock_status: string | null;
   stock_quantity: number | null;
   image_url: string | null;
+  /** cover = crop to fill card; contain = show full image with letterboxing */
+  image_object_fit: string | null;
   created_at: string | null;
 };
 
@@ -88,6 +90,12 @@ async function removeUploadedImage(
   }
 }
 
+function omitProductPayloadKeys<T extends Record<string, unknown>>(row: T, keys: (keyof T)[]) {
+  const next = { ...row };
+  for (const k of keys) delete next[k];
+  return next;
+}
+
 async function insertProductRow(
   supabase: ReturnType<typeof getSupabaseServerClient>,
   row: {
@@ -99,19 +107,20 @@ async function insertProductRow(
     stock_quantity: number | null;
     image_url: string | null;
     sort_order?: number;
+    image_object_fit?: string;
   },
 ) {
-  const withSort = { ...row };
-  let { error } = await supabase.from("hikuada_products").insert(withSort);
-  const msg = error?.message?.toLowerCase() ?? "";
-  if (
-    error &&
-    (msg.includes("sort_order") || msg.includes("schema cache") || error.code === "PGRST204")
-  ) {
-    const { sort_order: _omit, ...withoutSort } = withSort;
-    ({ error } = await supabase.from("hikuada_products").insert(withoutSort));
+  const base = { ...row } as Record<string, unknown>;
+  const attempts: ("sort_order" | "image_object_fit")[][] = [[], ["sort_order"], ["image_object_fit"], ["sort_order", "image_object_fit"]];
+  let lastError = null as { message: string; code?: string } | null;
+  for (const omitKeys of attempts) {
+    const payload =
+      omitKeys.length === 0 ? base : omitProductPayloadKeys(base, omitKeys as (keyof typeof base)[]);
+    const { error } = await supabase.from("hikuada_products").insert(payload);
+    if (!error) return { error: null };
+    lastError = error;
   }
-  return { error };
+  return { error: lastError };
 }
 
 async function updateProductRow(
@@ -126,19 +135,20 @@ async function updateProductRow(
     stock_quantity: number | null;
     image_url: string | null;
     sort_order?: number;
+    image_object_fit?: string;
   },
 ) {
-  const withSort = { ...row };
-  let { error } = await supabase.from("hikuada_products").update(withSort).eq("id", id);
-  const msg = error?.message?.toLowerCase() ?? "";
-  if (
-    error &&
-    (msg.includes("sort_order") || msg.includes("schema cache") || error.code === "PGRST204")
-  ) {
-    const { sort_order: _omit, ...withoutSort } = withSort;
-    ({ error } = await supabase.from("hikuada_products").update(withoutSort).eq("id", id));
+  const base = { ...row } as Record<string, unknown>;
+  const attempts: ("sort_order" | "image_object_fit")[][] = [[], ["sort_order"], ["image_object_fit"], ["sort_order", "image_object_fit"]];
+  let lastError = null as { message: string; code?: string } | null;
+  for (const omitKeys of attempts) {
+    const payload =
+      omitKeys.length === 0 ? base : omitProductPayloadKeys(base, omitKeys as (keyof typeof base)[]);
+    const { error } = await supabase.from("hikuada_products").update(payload).eq("id", id);
+    if (!error) return { error: null };
+    lastError = error;
   }
-  return { error };
+  return { error: lastError };
 }
 
 async function createProduct(formData: FormData) {
@@ -176,6 +186,8 @@ async function createProduct(formData: FormData) {
     parsedStockQuantity !== null && Number.isNaN(parsedStockQuantity) ? null : parsedStockQuantity;
   const parsedSortOrder = Number(sortOrderRaw);
   const sortOrder = Number.isNaN(parsedSortOrder) || parsedSortOrder < 0 ? 100 : parsedSortOrder;
+  const image_object_fit_raw = formData.get("image_object_fit")?.toString().trim().toLowerCase();
+  const image_object_fit = image_object_fit_raw === "contain" ? "contain" : "cover";
 
   if (!model || !sizeWidthRaw || !sizeHeightRaw || !size) {
     return;
@@ -212,6 +224,7 @@ async function createProduct(formData: FormData) {
       stock_status: stockStatus,
       stock_quantity: stockQuantity,
       image_url: imageUrl,
+      image_object_fit,
     });
 
     if (error) {
@@ -303,6 +316,8 @@ async function updateProduct(formData: FormData) {
     parsedStockQuantity !== null && Number.isNaN(parsedStockQuantity) ? null : parsedStockQuantity;
   const parsedSortOrder = Number(sortOrderRaw);
   const sortOrder = Number.isNaN(parsedSortOrder) || parsedSortOrder < 0 ? 100 : parsedSortOrder;
+  const image_object_fit_raw = formData.get("image_object_fit")?.toString().trim().toLowerCase();
+  const image_object_fit = image_object_fit_raw === "contain" ? "contain" : "cover";
 
   let packingSpec = "";
   if (packingLengthRaw || packingPcsRaw) {
@@ -365,6 +380,7 @@ async function updateProduct(formData: FormData) {
       stock_status: stockStatus,
       stock_quantity: stockQuantity,
       image_url: nextImageUrl,
+      image_object_fit,
     });
 
     if (updateError) {
@@ -426,7 +442,9 @@ export default async function AdminProductsPage() {
   const supabase = getSupabaseServerClient();
   const { data, error } = await supabase
     .from("hikuada_products")
-    .select("id, model, category, sort_order, size, packing_spec, stock_status, stock_quantity, image_url, created_at")
+    .select(
+      "id, model, category, sort_order, size, packing_spec, stock_status, stock_quantity, image_url, image_object_fit, created_at",
+    )
     .order("sort_order", { ascending: true, nullsFirst: false })
     .order("created_at", { ascending: false });
 
@@ -540,6 +558,15 @@ export default async function AdminProductsPage() {
             placeholder="库存数量（可选）"
             className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none ring-slate-400 focus:ring-2"
           />
+          <select
+            name="image_object_fit"
+            defaultValue="cover"
+            className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none ring-slate-400 focus:ring-2"
+            title="前台卡片缩略图如何放入固定高度区域"
+          >
+            <option value="cover">卡片图片：铺满裁剪（默认）</option>
+            <option value="contain">卡片图片：完整显示（留白）</option>
+          </select>
           <input
             type="file"
             name="image_file"
