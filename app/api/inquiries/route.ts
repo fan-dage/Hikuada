@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { notifyNewInquiryEmail } from "@/lib/inquiry-notification-email";
 import { getSupabaseServerClient } from "@/lib/supabase";
 
 type InquiryPayload = {
@@ -53,6 +54,14 @@ export async function POST(request: Request) {
         { status: 500 },
       );
     }
+
+    await notifyNewInquiryEmail({
+      name: name!,
+      phone: phone!,
+      contactType: contactType!,
+      email,
+      message: message!,
+    });
 
     return NextResponse.json({ success: true });
   } catch {
