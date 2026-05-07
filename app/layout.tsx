@@ -20,10 +20,6 @@ export const metadata: Metadata = {
   title: "Hikuada | PS Moldings Factory",
   description:
     "Hikuada is a professional PS moldings manufacturer serving wholesale buyers in Vietnam and Southeast Asia.",
-  icons: {
-    icon: [{ url: "/hikuada.png", type: "image/png", sizes: "any" }],
-    apple: [{ url: "/hikuada.png", type: "image/png" }],
-  },
 };
 
 export const viewport: Viewport = {
