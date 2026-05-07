@@ -1,5 +1,6 @@
 import { AddToInquiryListButton } from "@/components/add-to-inquiry-list-button";
 import { InquiryForm } from "@/components/inquiry-form";
+import { HomeBannerHeroOverlay } from "@/components/home-banner-hero-overlay";
 import { HomeBannerCarousel } from "@/components/home-banner-carousel";
 import { getSupabaseServerClient } from "@/lib/supabase";
 import { ProductCardSpecs } from "@/components/product-card-specs";
@@ -7,6 +8,7 @@ import { ProductImagePreview } from "@/components/product-image-preview";
 import { productCardImageObjectFit } from "@/lib/product-card-image-fit";
 import Link from "next/link";
 import { SiteHeader } from "@/components/site-header";
+import { normalizeBannerHero, type BannerHeroRow } from "@/lib/banner-hero";
 import Image from "next/image";
 
 const PRODUCTS_PER_PAGE = 8;
@@ -73,6 +75,9 @@ export default async function Home({
     bannerSlides = [{ src: DEFAULT_BANNER_SRC, alt: DEFAULT_BANNER_ALT }];
   }
 
+  const { data: bannerHeroRow } = await supabase.from("hikuada_banner_hero").select("*").eq("id", 1).maybeSingle();
+  const bannerHero: BannerHeroRow = normalizeBannerHero(bannerHeroRow as Partial<BannerHeroRow> | null);
+
   const { data, count } = await supabase
     .from("hikuada_products")
     .select("id, model, category, sort_order, size, packing_spec, stock_status, image_url, image_object_fit", {
@@ -122,28 +127,7 @@ export default async function Home({
 
       <section className="relative z-0 w-full overflow-hidden border-y border-slate-200">
         <HomeBannerCarousel slides={bannerSlides} />
-        {/* z-10 keeps headline/gradient above carousel slides (slides use z-[1] internally). */}
-        <div className="pointer-events-none absolute inset-0 z-10 bg-gradient-to-r from-slate-950/45 via-slate-900/15 to-transparent" />
-        <div className="pointer-events-none absolute inset-0 z-10">
-          <div className="mx-auto flex h-full max-w-6xl items-center px-6">
-            <div className="max-w-3xl space-y-6 pt-2 text-white">
-              <p className="inline-block rounded-full border border-white/40 bg-white/10 px-3 py-1 text-xs font-medium tracking-wide text-white">
-                PS MOLDINGS | FACTORY DIRECT
-              </p>
-              <h1 className="text-4xl font-extrabold leading-[1.05] text-white md:text-6xl">
-                Premium PS Moldings Factory Direct
-              </h1>
-              <p className="max-w-2xl text-base leading-relaxed text-white/90 md:text-lg">
-                Specialized in Southeast Asia markets with Form E support and door-to-door double-clearance logistics.
-              </p>
-              <div className="flex flex-wrap gap-3 text-sm">
-                <span className="rounded-full border border-white/40 bg-white/10 px-4 py-2 text-white">OEM/ODM Service</span>
-                <span className="rounded-full border border-white/40 bg-white/10 px-4 py-2 text-white">Stable Output Capacity</span>
-                <span className="rounded-full border border-white/40 bg-white/10 px-4 py-2 text-white">Export Standard Packing</span>
-              </div>
-            </div>
-          </div>
-        </div>
+        <HomeBannerHeroOverlay hero={bannerHero} />
       </section>
 
       <section className="border-y border-slate-200 bg-white/80">
