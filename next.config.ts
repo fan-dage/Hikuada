@@ -16,6 +16,26 @@ const nextConfig: NextConfig = {
       bodySizeLimit: "12mb",
     },
   },
+  // Browsers often fetch /favicon.ico first; serve our PNG icon so the tab logo updates reliably.
+  async rewrites() {
+    return [{ source: "/favicon.ico", destination: "/icon.png" }];
+  },
+  async headers() {
+    return [
+      {
+        source: "/icon.png",
+        headers: [{ key: "Cache-Control", value: "public, max-age=3600, must-revalidate" }],
+      },
+      {
+        source: "/apple-icon.png",
+        headers: [{ key: "Cache-Control", value: "public, max-age=3600, must-revalidate" }],
+      },
+      {
+        source: "/favicon.ico",
+        headers: [{ key: "Cache-Control", value: "public, max-age=0, must-revalidate" }],
+      },
+    ];
+  },
   images: {
     remotePatterns: [
       {
