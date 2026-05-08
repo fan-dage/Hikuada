@@ -4,7 +4,10 @@ import { AddToInquiryListButton } from "@/components/add-to-inquiry-list-button"
 import { ProductCardSpecs } from "@/components/product-card-specs";
 import { ProductImagePreview } from "@/components/product-image-preview";
 import { productCardImageObjectFit } from "@/lib/product-card-image-fit";
+import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
+import { getServerLocale } from "@/lib/server-locale";
+import { displayStockStatus, getSiteMessages } from "@/lib/site-messages";
 
 const PRODUCTS_PER_PAGE = 16;
 
@@ -36,6 +39,8 @@ export default async function ProductsPage({
   searchParams?: { page?: string; category?: string } | Promise<{ page?: string; category?: string }>;
 }) {
   const resolvedSearchParams = await Promise.resolve(searchParams);
+  const locale = await getServerLocale();
+  const m = getSiteMessages(locale);
   const rawPage = Number(resolvedSearchParams?.page || "1");
   const currentPage = Number.isFinite(rawPage) && rawPage > 0 ? Math.floor(rawPage) : 1;
   const category = resolvedSearchParams?.category;
@@ -45,17 +50,17 @@ export default async function ProductsPage({
     category === "ps_moldings" || category === "frame_machinery_consumables" || category === "finished_products_others"
       ? category
       : null;
-  let categoryTitle = "More Product Series";
-  let categorySubtitle = "Browse complete in-stock models from Hikuada factory.";
+  let categoryTitle = m.products.moreSeriesTitle;
+  let categorySubtitle = m.products.moreSeriesSubtitle;
   if (validCategory === "ps_moldings") {
-    categoryTitle = "Picture Frame Moldings";
-    categorySubtitle = "Browse complete in-stock moldings from Hikuada factory.";
+    categoryTitle = m.products.pictureMoldingsTitle;
+    categorySubtitle = m.products.pictureMoldingsSubtitle;
   } else if (validCategory === "frame_machinery_consumables") {
-    categoryTitle = "Frame Machinery & Consumables";
-    categorySubtitle = "Browse machinery and consumables for frame manufacturing workflows.";
+    categoryTitle = m.products.machineryTitle;
+    categorySubtitle = m.products.machinerySubtitle;
   } else if (validCategory === "finished_products_others") {
-    categoryTitle = "Finished Products & Other Products";
-    categorySubtitle = "Finished product lines and other wholesale-ready product options.";
+    categoryTitle = m.products.finishedTitle;
+    categorySubtitle = m.products.finishedSubtitle;
   }
 
   const supabase = getSupabaseServerClient();
@@ -95,7 +100,7 @@ export default async function ProductsPage({
             href="/#products"
             className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
           >
-            Back to Home
+            {m.products.backToHome}
           </Link>
         </header>
         <div className="mb-8 flex flex-wrap items-center gap-3">
@@ -107,7 +112,7 @@ export default async function ProductsPage({
                 : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
             }`}
           >
-            Picture Frame Moldings
+            {m.nav.productsMenu.pictureFrameMoldings}
           </Link>
           <Link
             href="/products?category=frame_machinery_consumables"
@@ -117,7 +122,7 @@ export default async function ProductsPage({
                 : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
             }`}
           >
-            Frame Machinery & Consumables
+            {m.nav.productsMenu.frameMachineryConsumables}
           </Link>
           <Link
             href="/products?category=finished_products_others"
@@ -127,13 +132,13 @@ export default async function ProductsPage({
                 : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
             }`}
           >
-            Finished & Other Products
+            {m.nav.productsMenu.finishedOtherProducts}
           </Link>
         </div>
 
         {products.length === 0 ? (
           <div className="rounded-xl border border-dashed border-slate-300 bg-white p-8 text-sm text-slate-500">
-            暂无产品数据，请到后台「产品管理」新增产品。
+            {m.products.empty}
           </div>
         ) : (
           <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
@@ -147,7 +152,7 @@ export default async function ProductsPage({
                     product.stock_status,
                   )}`}
                 >
-                  {product.stock_status || "In Stock"}
+                  {displayStockStatus(product.stock_status, m.stock)}
                 </span>
                 <div className="h-44 border-b border-slate-200 bg-slate-100 p-4">
                   <ProductImagePreview
@@ -158,7 +163,12 @@ export default async function ProductsPage({
                 </div>
                 <div className="space-y-2 p-5">
                   <h3 className="text-xl font-bold text-slate-900">{product.model || "-"}</h3>
-                  <ProductCardSpecs size={product.size} packingSpec={product.packing_spec} />
+                  <ProductCardSpecs
+                    size={product.size}
+                    packingSpec={product.packing_spec}
+                    sizeLabel={m.productCard.size}
+                    packingLabel={m.productCard.packing}
+                  />
                   <AddToInquiryListButton product={product} />
                 </div>
               </article>
@@ -181,7 +191,7 @@ export default async function ProductsPage({
                 }
                 className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
               >
-                Previous
+                {m.products.previous}
               </Link>
             )}
             {hasNextPage && (
@@ -193,12 +203,13 @@ export default async function ProductsPage({
                 }
                 className="rounded-lg border border-slate-900 bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800"
               >
-                Next
+                {m.products.next}
               </Link>
             )}
           </div>
         )}
       </div>
+      <SiteFooter />
     </main>
   );
 }

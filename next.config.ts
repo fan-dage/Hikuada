@@ -10,7 +10,26 @@ const supabaseHostname = (() => {
   }
 })();
 
+/**
+ * Hostnames allowed to hit Next dev-only assets / HMR when the page is opened by URL
+ * (e.g. http://192.168.x.x:3000). Wildcards like `192.168.*` do NOT match IPs — use exact
+ * hostnames or DNS-style patterns (see Next docs). Extra hosts: NEXT_ALLOWED_DEV_ORIGINS in .env.local.
+ */
+const allowedDevOrigins = Array.from(
+  new Set([
+    "localhost",
+    "127.0.0.1",
+    "::1",
+    // Common LAN dev IP from local network testing (add yours via NEXT_ALLOWED_DEV_ORIGINS if different).
+    "192.168.0.109",
+    ...(process.env.NEXT_ALLOWED_DEV_ORIGINS?.split(",")
+      .map((host) => host.trim())
+      .filter(Boolean) ?? []),
+  ]),
+);
+
 const nextConfig: NextConfig = {
+  allowedDevOrigins,
   experimental: {
     serverActions: {
       bodySizeLimit: "12mb",

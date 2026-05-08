@@ -2,8 +2,11 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useSiteCopy } from "@/components/site-copy-context";
 
 export function ProductsDropdown() {
+  const { nav } = useSiteCopy();
+  const menu = nav.productsMenu;
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -39,7 +42,7 @@ export function ProductsDropdown() {
         onClick={() => setOpen((v) => !v)}
         className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-white"
       >
-        Products
+        {menu.trigger}
       </button>
       <div
         className={[
@@ -57,7 +60,7 @@ export function ProductsDropdown() {
             className="block rounded-lg px-3 py-2 text-sm text-slate-700 transition hover:bg-slate-50"
             onClick={close}
           >
-            Picture Frame Moldings
+            {menu.pictureFrameMoldings}
           </Link>
           <Link
             href="/products?category=frame_machinery_consumables"
@@ -65,7 +68,7 @@ export function ProductsDropdown() {
             className="block rounded-lg px-3 py-2 text-sm text-slate-700 transition hover:bg-slate-50"
             onClick={close}
           >
-            Frame Machinery & Consumables
+            {menu.frameMachineryConsumables}
           </Link>
           <Link
             href="/products?category=finished_products_others"
@@ -73,7 +76,7 @@ export function ProductsDropdown() {
             className="block rounded-lg px-3 py-2 text-sm text-slate-700 transition hover:bg-slate-50"
             onClick={close}
           >
-            Finished & Other Products
+            {menu.finishedOtherProducts}
           </Link>
         </div>
       </div>

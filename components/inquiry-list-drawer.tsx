@@ -7,8 +7,10 @@ import {
   INQUIRY_PREFILL_SESSION_KEY,
 } from "@/lib/inquiry-list";
 import { useInquiryList } from "@/components/inquiry-list-context";
+import { useSiteCopy } from "@/components/site-copy-context";
 
 export function InquiryListDrawer() {
+  const d = useSiteCopy().inquiryDrawer;
   const { items, drawerOpen, closeDrawer, removeItem, setQuantity, clear } = useInquiryList();
 
   useEffect(() => {
@@ -54,7 +56,7 @@ export function InquiryListDrawer() {
     <div className="fixed inset-0 z-[200]">
       <button
         type="button"
-        aria-label="Close inquiry list"
+        aria-label={d.closeList}
         className="absolute inset-0 bg-slate-950/50 backdrop-blur-[2px]"
         onClick={closeDrawer}
       />
@@ -67,15 +69,15 @@ export function InquiryListDrawer() {
         <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
           <div>
             <h2 id="inquiry-list-title" className="text-lg font-semibold text-slate-900">
-              Inquiry list
+              {d.title}
             </h2>
-            <p className="text-xs text-slate-500">Add models here, then send one inquiry.</p>
+            <p className="text-xs text-slate-500">{d.subtitle}</p>
           </div>
           <button
             type="button"
             onClick={closeDrawer}
             className="flex h-9 w-9 items-center justify-center rounded-full text-xl leading-none text-slate-500 hover:bg-slate-100 hover:text-slate-800"
-            aria-label="Close"
+            aria-label={d.closeDialog}
           >
             ×
           </button>
@@ -84,7 +86,7 @@ export function InquiryListDrawer() {
         <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
           {items.length === 0 ? (
             <p className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-10 text-center text-sm text-slate-600">
-              Your inquiry list is empty. Use “Add to inquiry list” on product cards.
+              {d.empty}
             </p>
           ) : (
             <ul className="space-y-3">
@@ -99,24 +101,24 @@ export function InquiryListDrawer() {
                       <img src={item.image_url} alt="" className="h-full w-full object-cover" />
                     ) : (
                       <span className="flex h-full items-center justify-center text-[10px] text-slate-400">
-                        No img
+                        {d.noImage}
                       </span>
                     )}
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="font-semibold text-slate-900">{item.model}</p>
                     <p className="mt-0.5 line-clamp-2 text-xs text-slate-600">
-                      Size: {item.size ?? "-"}
+                      {d.size} {item.size ?? "-"}
                       <br />
-                      Packing: {item.packing_spec ?? "-"}
+                      {d.packing} {item.packing_spec ?? "-"}
                     </p>
                     <div className="mt-2 flex flex-wrap items-center gap-2">
-                      <span className="text-xs text-slate-500">Qty</span>
+                      <span className="text-xs text-slate-500">{d.qty}</span>
                       <div className="inline-flex items-center rounded-lg border border-slate-200 bg-white">
                         <button
                           type="button"
                           className="px-2 py-1 text-sm text-slate-700 hover:bg-slate-100 disabled:opacity-40"
-                          aria-label="Decrease quantity"
+                          aria-label={d.decreaseQty}
                           disabled={item.quantity <= 1}
                           onClick={() => setQuantity(item.id, item.quantity - 1)}
                         >
@@ -128,7 +130,7 @@ export function InquiryListDrawer() {
                         <button
                           type="button"
                           className="px-2 py-1 text-sm text-slate-700 hover:bg-slate-100"
-                          aria-label="Increase quantity"
+                          aria-label={d.increaseQty}
                           onClick={() => setQuantity(item.id, item.quantity + 1)}
                         >
                           +
@@ -139,7 +141,7 @@ export function InquiryListDrawer() {
                         onClick={() => removeItem(item.id)}
                         className="ml-auto text-xs font-medium text-red-600 hover:text-red-700"
                       >
-                        Remove
+                        {d.remove}
                       </button>
                     </div>
                   </div>
@@ -155,12 +157,12 @@ export function InquiryListDrawer() {
               type="button"
               onClick={() => {
                 if (items.length === 0) return;
-                if (confirm("Clear all items from your inquiry list?")) clear();
+                if (confirm(d.clearConfirm)) clear();
               }}
               disabled={items.length === 0}
               className="flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
             >
-              Clear all
+              {d.clearAll}
             </button>
             <button
               type="button"
@@ -168,7 +170,7 @@ export function InquiryListDrawer() {
               disabled={items.length === 0}
               className="flex-[1.4] rounded-lg bg-slate-900 px-3 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
             >
-              Proceed to inquiry
+              {d.proceed}
             </button>
           </div>
         </div>

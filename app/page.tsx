@@ -7,9 +7,11 @@ import { ProductCardSpecs } from "@/components/product-card-specs";
 import { ProductImagePreview } from "@/components/product-image-preview";
 import { productCardImageObjectFit } from "@/lib/product-card-image-fit";
 import Link from "next/link";
+import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { normalizeBannerHero, type BannerHeroRow } from "@/lib/banner-hero";
-import Image from "next/image";
+import { getServerLocale } from "@/lib/server-locale";
+import { displayStockStatus, getSiteMessages } from "@/lib/site-messages";
 
 const PRODUCTS_PER_PAGE = 8;
 
@@ -40,6 +42,8 @@ export default async function Home({
   searchParams?: { page?: string } | Promise<{ page?: string }>;
 }) {
   await Promise.resolve(searchParams);
+  const locale = await getServerLocale();
+  const m = getSiteMessages(locale);
   const supabase = getSupabaseServerClient();
 
   const { data: homeTagRows, error: homeTagsError } = await supabase
@@ -145,8 +149,8 @@ export default async function Home({
 
       <section id="products" className="mx-auto max-w-6xl px-6 pb-20 pt-12 md:pt-14">
         <div className="mb-8">
-          <h2 className="text-3xl font-bold text-slate-900">In-Stock Product Series</h2>
-          <p className="mt-2 text-slate-600">Catalog-ready models with stable supply for wholesale channels.</p>
+          <h2 className="text-3xl font-bold text-slate-900">{m.home.inStockSeriesTitle}</h2>
+          <p className="mt-2 text-slate-600">{m.home.inStockSeriesSubtitle}</p>
         </div>
         <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
           {products.length > 0 ? (
@@ -160,7 +164,7 @@ export default async function Home({
                     product.stock_status,
                   )}`}
                 >
-                  {product.stock_status || "In Stock"}
+                  {displayStockStatus(product.stock_status, m.stock)}
                 </span>
                 <div className="h-44 border-b border-slate-200 bg-slate-100 p-4">
                   <ProductImagePreview
@@ -171,14 +175,19 @@ export default async function Home({
                 </div>
                 <div className="space-y-2 p-5">
                   <h3 className="text-xl font-bold text-slate-900">{product.model || "-"}</h3>
-                  <ProductCardSpecs size={product.size} packingSpec={product.packing_spec} />
+                  <ProductCardSpecs
+                    size={product.size}
+                    packingSpec={product.packing_spec}
+                    sizeLabel={m.productCard.size}
+                    packingLabel={m.productCard.packing}
+                  />
                   <AddToInquiryListButton product={product} />
                 </div>
               </article>
             ))
           ) : (
             <div className="rounded-xl border border-dashed border-slate-300 bg-white p-8 text-sm text-slate-500 md:col-span-2 xl:col-span-4">
-              暂无产品数据，请到后台「产品管理」新增产品。
+              {m.home.emptyProducts}
             </div>
           )}
         </div>
@@ -188,7 +197,7 @@ export default async function Home({
               href="/products"
               className="rounded-lg border border-slate-900 bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800"
             >
-              View All Products
+              {m.home.viewAllProducts}
             </Link>
           </div>
         )}
@@ -196,8 +205,8 @@ export default async function Home({
 
       <section className="mx-auto max-w-6xl px-6 pb-20">
         <div className="mb-8">
-          <h2 className="text-3xl font-bold text-slate-900">Frame Making Machinery & Consumables</h2>
-          <p className="mt-2 text-slate-600">More machinery and consumables for frame manufacturing workflows.</p>
+          <h2 className="text-3xl font-bold text-slate-900">{m.home.machineryTitle}</h2>
+          <p className="mt-2 text-slate-600">{m.home.machinerySubtitle}</p>
         </div>
         <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
           {machineryProducts.length > 0 ? (
@@ -211,7 +220,7 @@ export default async function Home({
                     product.stock_status,
                   )}`}
                 >
-                  {product.stock_status || "In Stock"}
+                  {displayStockStatus(product.stock_status, m.stock)}
                 </span>
                 <div className="h-44 border-b border-slate-200 bg-slate-100 p-4">
                   <ProductImagePreview
@@ -222,14 +231,19 @@ export default async function Home({
                 </div>
                 <div className="space-y-2 p-5">
                   <h3 className="text-xl font-bold text-slate-900">{product.model || "-"}</h3>
-                  <ProductCardSpecs size={product.size} packingSpec={product.packing_spec} />
+                  <ProductCardSpecs
+                    size={product.size}
+                    packingSpec={product.packing_spec}
+                    sizeLabel={m.productCard.size}
+                    packingLabel={m.productCard.packing}
+                  />
                   <AddToInquiryListButton product={product} />
                 </div>
               </article>
             ))
           ) : (
             <div className="rounded-xl border border-dashed border-slate-300 bg-white p-8 text-sm text-slate-500 md:col-span-2 xl:col-span-4">
-              No machinery products yet. Add products in Admin with category Frame Making Machinery & Consumables.
+              {m.home.emptyMachinery}
             </div>
           )}
         </div>
@@ -237,8 +251,8 @@ export default async function Home({
 
       <section className="mx-auto max-w-6xl px-6 pb-20">
         <div className="mb-8">
-          <h2 className="text-3xl font-bold text-slate-900">Finished Products & Other Products</h2>
-          <p className="mt-2 text-slate-600">Finished product lines and other wholesale-ready product options.</p>
+          <h2 className="text-3xl font-bold text-slate-900">{m.home.finishedTitle}</h2>
+          <p className="mt-2 text-slate-600">{m.home.finishedSubtitle}</p>
         </div>
         <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
           {finishedProducts.length > 0 ? (
@@ -252,7 +266,7 @@ export default async function Home({
                     product.stock_status,
                   )}`}
                 >
-                  {product.stock_status || "In Stock"}
+                  {displayStockStatus(product.stock_status, m.stock)}
                 </span>
                 <div className="h-44 border-b border-slate-200 bg-slate-100 p-4">
                   <ProductImagePreview
@@ -263,14 +277,19 @@ export default async function Home({
                 </div>
                 <div className="space-y-2 p-5">
                   <h3 className="text-xl font-bold text-slate-900">{product.model || "-"}</h3>
-                  <ProductCardSpecs size={product.size} packingSpec={product.packing_spec} />
+                  <ProductCardSpecs
+                    size={product.size}
+                    packingSpec={product.packing_spec}
+                    sizeLabel={m.productCard.size}
+                    packingLabel={m.productCard.packing}
+                  />
                   <AddToInquiryListButton product={product} />
                 </div>
               </article>
             ))
           ) : (
             <div className="rounded-xl border border-dashed border-slate-300 bg-white p-8 text-sm text-slate-500 md:col-span-2 xl:col-span-4">
-              No finished products yet. Add products in Admin with category Finished Products & Other Products.
+              {m.home.emptyFinished}
             </div>
           )}
         </div>
@@ -279,7 +298,7 @@ export default async function Home({
             href="/products?category=finished_products_others"
             className="rounded-lg border border-slate-900 bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800"
           >
-            View All — Finished & Other Products
+            {m.home.viewAllFinished}
           </Link>
         </div>
       </section>
@@ -290,29 +309,7 @@ export default async function Home({
         </div>
       </section>
 
-      <footer id="contact" className="border-t border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-6xl flex-col items-start justify-between gap-6 px-6 py-12 md:flex-row md:items-center">
-          <p className="text-base text-slate-700">Contact Leo for Bulk Wholesale Pricing.</p>
-          <div className="flex w-full flex-col gap-3 md:w-auto md:flex-row">
-            <a
-              href="https://zalo.me/8618630000333"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center justify-center rounded-lg border border-sky-700 bg-sky-700 px-8 py-4 text-base font-semibold text-white transition hover:bg-sky-800"
-            >
-              Chat on Zalo
-            </a>
-            <a
-              href="https://wa.me/8619933036333"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center justify-center rounded-lg border border-amber-500 bg-amber-500 px-8 py-4 text-base font-semibold text-slate-950 transition hover:bg-amber-400"
-            >
-              Chat on WhatsApp
-            </a>
-          </div>
-        </div>
-      </footer>
+      <SiteFooter />
     </main>
   );
 }

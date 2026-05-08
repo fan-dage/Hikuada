@@ -1,11 +1,13 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useState } from "react";
+import { useSiteCopy } from "@/components/site-copy-context";
 import { INQUIRY_PREFILL_EVENT, INQUIRY_PREFILL_SESSION_KEY } from "@/lib/inquiry-list";
 
 type SubmitStatus = "idle" | "submitting" | "success" | "error";
 
 export function InquiryForm() {
+  const inquiryForm = useSiteCopy().inquiryForm;
   const [status, setStatus] = useState<SubmitStatus>("idle");
   const [errorText, setErrorText] = useState("");
   const [message, setMessage] = useState("");
@@ -66,13 +68,13 @@ export function InquiryForm() {
       className="space-y-4 rounded-2xl border border-slate-200 bg-white p-6 text-slate-900 shadow-[0_20px_60px_-25px_rgba(15,23,42,0.35)]"
     >
       <div>
-        <h3 className="text-xl font-semibold text-slate-900">Quick Inquiry</h3>
-        <p className="mt-1 text-sm text-slate-600">Tell us your demand and get a factory quote in 12 hours.</p>
+        <h3 className="text-xl font-semibold text-slate-900">{inquiryForm.title}</h3>
+        <p className="mt-1 text-sm text-slate-600">{inquiryForm.subtitle}</p>
       </div>
       <input
         name="name"
         required
-        placeholder="Your Name*"
+        placeholder={inquiryForm.namePlaceholder}
         className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none ring-amber-400 placeholder:text-slate-400 focus:ring-2"
       />
       <div className="grid gap-3 md:grid-cols-[1fr_1.6fr]">
@@ -89,7 +91,7 @@ export function InquiryForm() {
         <input
           name="phone"
           required
-          placeholder="Contact ID / Number*"
+          placeholder={inquiryForm.phonePlaceholder}
           className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none ring-amber-400 placeholder:text-slate-400 focus:ring-2"
         />
       </div>
@@ -97,7 +99,7 @@ export function InquiryForm() {
         name="email"
         type="email"
         required
-        placeholder="Email*"
+        placeholder={inquiryForm.emailPlaceholder}
         className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none ring-amber-400 placeholder:text-slate-400 focus:ring-2"
       />
       <textarea
@@ -106,7 +108,7 @@ export function InquiryForm() {
         rows={4}
         value={message}
         onChange={(event) => setMessage(event.target.value)}
-        placeholder="Your demand (model, quantity, destination)..."
+        placeholder={inquiryForm.messagePlaceholder}
         className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none ring-amber-400 placeholder:text-slate-400 focus:ring-2"
       />
       <button
@@ -114,10 +116,10 @@ export function InquiryForm() {
         disabled={status === "submitting"}
         className="w-full rounded-lg bg-amber-500 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-amber-400 disabled:cursor-not-allowed disabled:bg-amber-300"
       >
-        {status === "submitting" ? "Submitting..." : "Send Inquiry"}
+        {status === "submitting" ? inquiryForm.submitting : inquiryForm.submit}
       </button>
       {status === "success" && (
-        <p className="text-sm text-emerald-700">Thank you. We will get back to you within 12 hours.</p>
+        <p className="text-sm text-emerald-700">{inquiryForm.success}</p>
       )}
       {status === "error" && <p className="text-sm text-red-600">{errorText}</p>}
     </form>

@@ -1,5 +1,6 @@
 "use client";
 
+import { useSiteCopy } from "@/components/site-copy-context";
 import { useInquiryList } from "@/components/inquiry-list-context";
 import { usePathname } from "next/navigation";
 
@@ -17,6 +18,7 @@ function CartIcon({ className }: { className?: string }) {
 /** Floating inquiry list entry — fixed bottom-right, cart affordance, safe-area aware. */
 export function InquiryListTrigger() {
   const pathname = usePathname();
+  const { inquiryTrigger } = useSiteCopy();
   const { itemCount, openDrawer, drawerOpen } = useInquiryList();
 
   if (pathname?.startsWith("/admin")) {
@@ -29,7 +31,11 @@ export function InquiryListTrigger() {
     <button
       type="button"
       onClick={openDrawer}
-      aria-label={`Open inquiry list${itemCount ? `, ${itemCount} items` : ""}`}
+      aria-label={
+        itemCount
+          ? inquiryTrigger.openLabelWithCount.replace("{count}", String(itemCount))
+          : inquiryTrigger.openLabel
+      }
       aria-expanded={drawerOpen}
       aria-hidden={drawerOpen}
       tabIndex={drawerOpen ? -1 : undefined}
