@@ -2,12 +2,18 @@ import Link from "next/link";
 import { getServerLocale } from "@/lib/server-locale";
 import { getSiteMessages } from "@/lib/site-messages";
 
-export async function SiteFooter() {
+export async function SiteFooter({ contactAnchorId = "contact" }: { contactAnchorId?: string | false } = {}) {
   const locale = await getServerLocale();
   const m = getSiteMessages(locale);
+  const businessTermsHref = "/how-to-order";
+
+  const footerId = contactAnchorId === false ? undefined : contactAnchorId;
+
+  const legalLinkClass =
+    "text-sm font-medium text-slate-600 underline decoration-slate-300 underline-offset-[5px] transition hover:text-slate-900 hover:decoration-slate-600";
 
   return (
-    <footer id="contact" className="border-t border-slate-200 bg-white">
+    <footer id={footerId} className="border-t border-slate-200 bg-white">
       <div className="mx-auto max-w-6xl px-6 py-12">
         <div className="flex flex-col items-start justify-between gap-6 md:flex-row md:items-center">
           <p className="text-base text-slate-700">{m.home.footerContact}</p>
@@ -34,11 +40,11 @@ export async function SiteFooter() {
           className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-2 border-t border-slate-100 pt-8"
           aria-label="Legal"
         >
-          <Link
-            href="/privacy-policy"
-            className="text-sm font-medium text-slate-600 underline decoration-slate-300 underline-offset-[5px] transition hover:text-slate-900 hover:decoration-slate-600"
-          >
+          <Link href="/privacy-policy" className={legalLinkClass}>
             Privacy Policy
+          </Link>
+          <Link href={businessTermsHref} className={legalLinkClass}>
+            {m.nav.businessTerms}
           </Link>
         </nav>
       </div>

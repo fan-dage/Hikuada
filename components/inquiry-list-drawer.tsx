@@ -43,11 +43,13 @@ export function InquiryListDrawer() {
     window.dispatchEvent(new Event(INQUIRY_PREFILL_EVENT));
     const pathname = window.location.pathname;
     const onHome = pathname === "/" || pathname === "";
-    if (onHome) {
+    const onAbout = pathname === "/about";
+    const onHowToOrder = pathname === "/how-to-order";
+    if (onHome || onAbout || onHowToOrder) {
       document.getElementById("inquiry-form")?.scrollIntoView({ behavior: "smooth", block: "start" });
       return;
     }
-    window.location.assign("/#inquiry-form");
+    window.location.assign("/about#inquiry-form");
   }
 
   if (!drawerOpen) return null;
