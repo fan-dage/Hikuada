@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { Fragment, useCallback, useId, useLayoutEffect, useRef, useState } from "react";
+import { Fragment, useCallback, useId, useState } from "react";
 import { Banknote, FileText, Ship } from "lucide-react";
+import type { AppLocale } from "@/lib/site-locale-constants";
 import type { HowToOrderB2bBlockContent } from "@/lib/how-to-order-b2b-content";
 import { HOW_TO_ORDER_B2B_BLOCKS } from "@/lib/how-to-order-b2b-content";
 import { useMatchMedia } from "@/lib/use-match-media";
@@ -36,11 +37,13 @@ function cn(...parts: (string | false | undefined)[]) {
 }
 
 function B2bDetailBody({
+  panelTitle,
   block,
   langLabels,
   panelClose,
   onClose,
 }: {
+  panelTitle: string;
   block: HowToOrderB2bBlockContent;
   langLabels: { zh: string; en: string; vi: string };
   panelClose: string;
@@ -48,7 +51,7 @@ function B2bDetailBody({
 }) {
   return (
     <>
-      <p className="mb-6 text-center text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">{block.titleEn}</p>
+      <p className="mb-6 text-center text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">{panelTitle}</p>
 
       <div className="grid grid-cols-1 gap-10 md:grid-cols-3 md:gap-0 md:divide-x md:divide-slate-200/90">
         <div className="md:pr-8">
@@ -84,14 +87,20 @@ function B2bDetailBody({
   );
 }
 
+function cardPrimaryTitle(block: HowToOrderB2bBlockContent, locale: AppLocale) {
+  return locale === "vi" ? block.titleVi : block.titleEn;
+}
+
 export function HowToOrderB2B({
   title,
+  locale,
   langLabels,
   panelClose,
   fullTermsLink,
   fullTermsHref,
 }: {
   title: string;
+  locale: AppLocale;
   langLabels: { zh: string; en: string; vi: string };
   panelClose: string;
   fullTermsLink: string;
@@ -99,10 +108,8 @@ export function HowToOrderB2B({
 }) {
   const baseId = useId();
   const panelId = `${baseId}-b2b-detail-panel`;
-  const detailPanelRef = useRef<HTMLDivElement>(null);
-  const inlinePanelRef = useRef<HTMLDivElement>(null);
-  const [selected, setSelected] = useState<number | null>(null);
-  const isNarrow = useMatchMedia("(max-width: 767px)");
+  const [selected, setSelected] = useState<number | null>(0);
+  const isNarrow = useMatchMedia("(max-width: 1279px)");
 
   const selectBlock = useCallback((i: number) => {
     setSelected((prev) => (prev === i ? null : i));
@@ -113,20 +120,6 @@ export function HowToOrderB2B({
   }, []);
 
   const activeBlock = selected !== null ? HOW_TO_ORDER_B2B_BLOCKS[selected] : null;
-
-  useLayoutEffect(() => {
-    if (selected === null) return;
-    const el = isNarrow ? inlinePanelRef.current : detailPanelRef.current;
-    if (!el) return;
-    const prefersReduced =
-      typeof window !== "undefined" &&
-      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    el.scrollIntoView({
-      behavior: prefersReduced ? "auto" : "smooth",
-      block: isNarrow ? "nearest" : "start",
-      inline: "nearest",
-    });
-  }, [selected, isNarrow]);
 
   return (
     <section
@@ -142,22 +135,33 @@ export function HowToOrderB2B({
         </h2>
 
         <div className="relative mt-12 sm:mt-14">
-          <ol className="relative z-10 m-0 grid list-none grid-cols-1 gap-4 p-0 sm:gap-5 md:grid-cols-3 md:gap-5">
+          <div
+            className="pointer-events-none absolute bottom-8 left-1/2 top-8 w-px -translate-x-1/2 bg-slate-200 xl:hidden"
+            aria-hidden
+          />
+
+          <div
+            className="pointer-events-none absolute left-8 right-8 top-[2.85rem] z-0 hidden h-px bg-slate-200 xl:block"
+            aria-hidden
+          />
+
+          <ol className="relative z-10 m-0 grid list-none grid-cols-1 items-stretch gap-4 p-0 sm:gap-5 xl:grid-cols-3 xl:gap-3">
             {HOW_TO_ORDER_B2B_BLOCKS.map((block: HowToOrderB2bBlockContent, i) => {
               const Icon = ICONS[block.key];
               const num = String(i + 1).padStart(2, "0");
               const active = selected === i;
+              const primaryTitle = cardPrimaryTitle(block, locale);
 
               return (
                 <Fragment key={block.key}>
-                  <li className="relative flex min-h-0 min-w-0">
+                  <li className="relative flex min-h-0 min-w-0 xl:h-full">
                     <button
                       type="button"
                       aria-expanded={active}
                       aria-controls={panelId}
                       onClick={() => selectBlock(i)}
                       className={cn(
-                        "relative flex h-full min-h-0 w-full flex-col items-center overflow-visible rounded-3xl bg-white px-4 pb-5 pt-7 text-center outline-none transition-all duration-200 sm:px-5 sm:pb-6 sm:pt-8",
+                        "relative flex h-full min-h-0 w-full flex-col items-center overflow-visible rounded-3xl bg-white px-4 pb-5 pt-7 text-center outline-none transition-all duration-200 sm:px-5 sm:pb-6 sm:pt-8 xl:min-h-0",
                         cardShadow,
                         "hover:-translate-y-2 hover:shadow-[0_36px_64px_-12px_rgba(239,246,255,1),0_16px_32px_-8px_rgba(203,213,225,0.5)]",
                         "focus-visible:ring-2 focus-visible:ring-orange-500/50 focus-visible:ring-offset-2",
@@ -183,9 +187,9 @@ export function HowToOrderB2B({
                       />
 
                       <h3 className="relative z-10 mt-4 text-lg font-bold leading-tight tracking-tight text-slate-900 sm:text-xl">
-                        {block.titleEn}
+                        {primaryTitle}
                       </h3>
-                      <p className="relative z-10 mt-1 text-sm font-semibold text-slate-600">{block.titleZh}</p>
+                      <p className="relative z-10 mt-2 text-sm font-semibold text-slate-600">{block.titleZh}</p>
                       <p className="relative z-10 mt-0.5 text-sm font-semibold text-slate-600">{block.titleVi}</p>
 
                       {active ? (
@@ -200,15 +204,15 @@ export function HowToOrderB2B({
                   {isNarrow && active && activeBlock ? (
                     <li className="col-span-full min-w-0">
                       <div
-                        ref={inlinePanelRef}
                         id={panelId}
                         role="region"
-                        aria-label={activeBlock.titleEn}
+                        aria-label={primaryTitle}
                         tabIndex={-1}
                         className="scroll-mt-4 rounded-2xl border border-slate-200/90 bg-slate-50 px-4 pb-2 pt-6 shadow-[0_8px_28px_-10px_rgba(15,23,42,0.08)] sm:px-5 sm:pt-7"
                       >
                         <div key={selected} className="howto-order-panel-fade-in">
                           <B2bDetailBody
+                            panelTitle={cardPrimaryTitle(activeBlock, locale)}
                             block={activeBlock}
                             langLabels={langLabels}
                             panelClose={panelClose}
@@ -227,15 +231,15 @@ export function HowToOrderB2B({
 
       {!isNarrow && selected !== null && activeBlock ? (
         <div
-          ref={detailPanelRef}
           id={panelId}
           role="region"
-          aria-label={activeBlock.titleEn}
+          aria-label={cardPrimaryTitle(activeBlock, locale)}
           tabIndex={-1}
           className="relative left-1/2 z-20 mt-3 w-screen max-w-[100vw] -translate-x-1/2 scroll-mt-4 border-t border-slate-200/90 bg-slate-50 shadow-[0_-4px_24px_-8px_rgba(15,23,42,0.06),inset_0_1px_0_rgba(255,255,255,0.85)] sm:scroll-mt-6"
         >
           <div key={selected} className="howto-order-panel-fade-in mx-auto max-w-7xl px-4 pb-6 pt-8 sm:px-6 sm:pb-8 sm:pt-10">
             <B2bDetailBody
+              panelTitle={cardPrimaryTitle(activeBlock, locale)}
               block={activeBlock}
               langLabels={langLabels}
               panelClose={panelClose}

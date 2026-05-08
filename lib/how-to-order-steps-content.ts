@@ -1,12 +1,11 @@
 /**
  * Shared trilingual copy for /how-to-order timeline steps.
- * Rendered in how-to-order-timeline: primary by site locale + compact EN/中文/VI block.
+ * Cards show locale title + 中文 / Tiếng Việt step titles; details stay trilingual in the panel.
  */
 export type HowToOrderStepTrilingualSource = {
   titleEn: string;
+  titleZh: string;
   titleVi: string;
-  leadEn: string;
-  leadVi: string;
   detailEn: string;
   detailVi: string;
   detailZh: string;
@@ -15,9 +14,8 @@ export type HowToOrderStepTrilingualSource = {
 export const HOW_TO_ORDER_STEPS_TRILINGUAL: readonly HowToOrderStepTrilingualSource[] = [
   {
     titleEn: "Inquiry",
+    titleZh: "询价",
     titleVi: "Gửi yêu cầu",
-    leadEn: "SKUs, **FCL** volume, port & packing → **FOB/CIF** in **12 business hours**.",
-    leadVi: "Mã hàng, **FCL**, cảng & đóng gói → **FOB/CIF** trong **12 giờ làm việc**.",
     detailEn:
       "Share catalogue SKUs, estimated **FCL** volume, discharge port, and packing notes. Our sales desk issues an **FOB/CIF** quotation within **12 business hours**.",
     detailVi:
@@ -27,9 +25,8 @@ export const HOW_TO_ORDER_STEPS_TRILINGUAL: readonly HowToOrderStepTrilingualSou
   },
   {
     titleEn: "Samples",
+    titleZh: "样品",
     titleVi: "Mẫu sản phẩm",
-    leadEn: "**Free** reference samples; courier **100%** credited on first **FCL** shipment.",
-    leadVi: "Mẫu **miễn phí**; phí ship **khấu trừ 100%** đơn **FCL** đầu.",
     detailEn:
       "Reference samples are **free of charge**; courier cost is covered by the buyer and is **100% deductible** from your first **FCL** production shipment.",
     detailVi:
@@ -39,9 +36,8 @@ export const HOW_TO_ORDER_STEPS_TRILINGUAL: readonly HowToOrderStepTrilingualSou
   },
   {
     titleEn: "Deposit",
+    titleZh: "定金",
     titleVi: "Đặt cọc",
-    leadEn: "**30%** deposit after contract; balance on **QC**, before loading.",
-    leadVi: "Cọc **30%** sau hợp đồng; cân đối theo **QC**, trước đóng cont.",
     detailEn:
       "Following contract alignment, a standard **30%** deposit triggers material preparation and production scheduling. Balance is invoiced against **QC** evidence prior to loading.",
     detailVi:
@@ -50,10 +46,9 @@ export const HOW_TO_ORDER_STEPS_TRILINGUAL: readonly HowToOrderStepTrilingualSou
       "合同确认后支付 **30%** 标准定金以锁定排产与原料。尾款在生产完成并提供 **QC** 验货证据后、装柜前支付。",
   },
   {
-    titleEn: "Quality check",
+    titleEn: "Quality Check",
+    titleZh: "质量检查",
     titleVi: "Kiểm tra chất lượng",
-    leadEn: "**Live video**, stills, loading records; **factory visits** welcome.",
-    leadVi: "**Video** trực tiếp, ảnh, đóng cont; **chào đón** thăm xưởng.",
     detailEn:
       "We provide **live production-floor video**, high-resolution stills, and **container stuffing photos**. We also warmly welcome customers to visit our factory for **in-person inspections**.",
     detailVi:
@@ -63,9 +58,8 @@ export const HOW_TO_ORDER_STEPS_TRILINGUAL: readonly HowToOrderStepTrilingualSou
   },
   {
     titleEn: "Shipment",
+    titleZh: "运输",
     titleVi: "Vận chuyển",
-    leadEn: "**Full-stack FCL** sea freight to **Haiphong**, **HCMC** & global hubs.",
-    leadVi: "**FCL** trọn gói tới **Hải Phòng**, **TP.HCM** và các cảng lớn.",
     detailEn:
       "We coordinate **full-stack FCL** ocean freight to major global hubs including **Haiphong** and **Ho Chi Minh City**. **Real-time vessel tracking** and documentation support included.",
     detailVi:
@@ -75,9 +69,8 @@ export const HOW_TO_ORDER_STEPS_TRILINGUAL: readonly HowToOrderStepTrilingualSou
   },
   {
     titleEn: "Delivery",
+    titleZh: "交付",
     titleVi: "Giao hàng",
-    leadEn: "**B/L**, invoice, packing list & **Form E** after sailing.",
-    leadVi: "**B/L**, hóa đơn, packing list & **Form E** sau khi tàu chạy.",
     detailEn:
       "Post-sailing, we issue a complete export pack: **B/L**, **Commercial Invoice**, **Packing List**, and **Form E** for specialized tax treatment in Vietnam.",
     detailVi:
@@ -91,26 +84,18 @@ export function mapHowToOrderStepsForLocale(
   locale: "en" | "vi",
 ): readonly {
   title: string;
-  description: string;
+  titleZh: string;
+  titleVi: string;
   detailEn: string;
   detailVi: string;
   detailZh: string;
 }[] {
-  return HOW_TO_ORDER_STEPS_TRILINGUAL.map((s) =>
-    locale === "vi"
-      ? {
-          title: s.titleVi,
-          description: s.leadVi,
-          detailEn: s.detailEn,
-          detailVi: s.detailVi,
-          detailZh: s.detailZh,
-        }
-      : {
-          title: s.titleEn,
-          description: s.leadEn,
-          detailEn: s.detailEn,
-          detailVi: s.detailVi,
-          detailZh: s.detailZh,
-        },
-  );
+  return HOW_TO_ORDER_STEPS_TRILINGUAL.map((s) => ({
+    title: locale === "vi" ? s.titleVi : s.titleEn,
+    titleZh: s.titleZh,
+    titleVi: s.titleVi,
+    detailEn: s.detailEn,
+    detailVi: s.detailVi,
+    detailZh: s.detailZh,
+  }));
 }

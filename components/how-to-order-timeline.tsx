@@ -1,12 +1,13 @@
 "use client";
 
-import { Fragment, useCallback, useId, useLayoutEffect, useRef, useState } from "react";
+import { Fragment, useCallback, useId, useState } from "react";
 import { Container, Globe, MessageCircle, Package, Video, Wallet } from "lucide-react";
 import { useMatchMedia } from "@/lib/use-match-media";
 
 type Step = {
   title: string;
-  description: string;
+  titleZh: string;
+  titleVi: string;
   detailEn: string;
   detailVi: string;
   detailZh: string;
@@ -98,9 +99,7 @@ export function HowToOrderTimeline({
 }) {
   const baseId = useId();
   const panelId = `${baseId}-detail-panel`;
-  const detailPanelRef = useRef<HTMLDivElement>(null);
-  const inlinePanelRef = useRef<HTMLDivElement>(null);
-  const [selected, setSelected] = useState<number | null>(null);
+  const [selected, setSelected] = useState<number | null>(0);
   const isNarrow = useMatchMedia("(max-width: 1279px)");
 
   const selectStep = useCallback((i: number) => {
@@ -112,20 +111,6 @@ export function HowToOrderTimeline({
   }, []);
 
   const activeStep = selected !== null ? steps[selected] : null;
-
-  useLayoutEffect(() => {
-    if (selected === null) return;
-    const el = isNarrow ? inlinePanelRef.current : detailPanelRef.current;
-    if (!el) return;
-    const prefersReduced =
-      typeof window !== "undefined" &&
-      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    el.scrollIntoView({
-      behavior: prefersReduced ? "auto" : "smooth",
-      block: isNarrow ? "nearest" : "start",
-      inline: "nearest",
-    });
-  }, [selected, isNarrow]);
 
   return (
     <section
@@ -194,9 +179,8 @@ export function HowToOrderTimeline({
                       <h3 className="relative z-10 mt-4 text-lg font-bold leading-tight tracking-tight text-slate-900 sm:text-xl">
                         {step.title}
                       </h3>
-                      <p className="relative z-10 mt-2 max-w-[14rem] text-[13px] leading-snug text-slate-600 sm:max-w-none sm:text-sm sm:leading-snug">
-                        <BoldText text={step.description} />
-                      </p>
+                      <p className="relative z-10 mt-2 text-sm font-semibold text-slate-600">{step.titleZh}</p>
+                      <p className="relative z-10 mt-0.5 text-sm font-semibold text-slate-600">{step.titleVi}</p>
 
                       {active ? (
                         <span
@@ -210,7 +194,6 @@ export function HowToOrderTimeline({
                   {isNarrow && active && activeStep ? (
                     <li className="col-span-full min-w-0">
                       <div
-                        ref={inlinePanelRef}
                         id={panelId}
                         role="region"
                         aria-label={activeStep.title}
@@ -237,7 +220,6 @@ export function HowToOrderTimeline({
 
       {!isNarrow && selected !== null && activeStep ? (
         <div
-          ref={detailPanelRef}
           id={panelId}
           role="region"
           aria-label={activeStep.title}

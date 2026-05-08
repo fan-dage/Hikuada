@@ -55,6 +55,7 @@ export default async function HowToOrderPage() {
 
       <HowToOrderB2B
         title={p.b2bTitle}
+        locale={locale}
         langLabels={{
           zh: p.stepLangLabelZh,
           en: p.stepLangLabelEn,

@@ -104,7 +104,8 @@ export type SiteMessages = {
     timelineTitle: string;
     steps: readonly {
       title: string;
-      description: string;
+      titleZh: string;
+      titleVi: string;
       detailEn: string;
       detailVi: string;
       detailZh: string;
