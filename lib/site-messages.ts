@@ -143,7 +143,7 @@ export type SiteMessages = {
 const en: SiteMessages = {
   nav: {
     aboutUs: "About Us",
-    businessTerms: "Business Terms",
+    businessTerms: "How to Order",
     contactUs: "Contact Us",
     openMenuAria: "Open main menu",
     mobileMenuTitle: "Menu",
@@ -286,7 +286,7 @@ const en: SiteMessages = {
 const vi: SiteMessages = {
   nav: {
     aboutUs: "Về chúng tôi",
-    businessTerms: "Điều khoản kinh doanh",
+    businessTerms: "Cách đặt hàng",
     contactUs: "Liên hệ",
     openMenuAria: "Mở menu điều hướng",
     mobileMenuTitle: "Menu",
