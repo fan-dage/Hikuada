@@ -9,8 +9,9 @@ import { productCardImageObjectFit } from "@/lib/product-card-image-fit";
 import Link from "next/link";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
-import { normalizeBannerHero, type BannerHeroRow } from "@/lib/banner-hero";
+import { bannerHeroForLocale, normalizeBannerHero, type BannerHeroRow } from "@/lib/banner-hero";
 import { getServerLocale } from "@/lib/server-locale";
+import { localizeHomeTrustTags } from "@/lib/home-trust-tags-locale";
 import { displayStockStatus, getSiteMessages } from "@/lib/site-messages";
 
 const PRODUCTS_PER_PAGE = 8;
@@ -58,6 +59,7 @@ export default async function Home({
       .filter((v): v is string => Boolean(v));
     if (parsed.length > 0) trustItems = parsed;
   }
+  trustItems = localizeHomeTrustTags(trustItems, locale);
 
   const { data: bannerSlideRows, error: bannerSlidesErr } = await supabase
     .from("hikuada_banner_slides")
@@ -80,7 +82,10 @@ export default async function Home({
   }
 
   const { data: bannerHeroRow } = await supabase.from("hikuada_banner_hero").select("*").eq("id", 1).maybeSingle();
-  const bannerHero: BannerHeroRow = normalizeBannerHero(bannerHeroRow as Partial<BannerHeroRow> | null);
+  const bannerHero: BannerHeroRow = bannerHeroForLocale(
+    normalizeBannerHero(bannerHeroRow as Partial<BannerHeroRow> | null),
+    locale,
+  );
 
   const { data, count } = await supabase
     .from("hikuada_products")
