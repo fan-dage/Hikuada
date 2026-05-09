@@ -7,9 +7,12 @@ import { productCardImageObjectFit } from "@/lib/product-card-image-fit";
 import { ProductsCategoryNav } from "@/components/products-category-nav";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
+import type { Metadata } from "next";
+import { getPublicPathname } from "@/lib/request-public-path";
 import { getServerLocale } from "@/lib/server-locale";
 import { getPageList } from "@/lib/pagination-page-list";
 import { isProductDetailCategory } from "@/lib/product-catalog-back-href";
+import { alternatesWithCanonical, logicalPathFromPublicPath, withSeoKeywordFootnote } from "@/lib/seo-metadata";
 import { displayStockStatus, getSiteMessages } from "@/lib/site-messages";
 
 const PRODUCTS_PER_PAGE = 16;
@@ -43,6 +46,22 @@ function getStockBadgeClass(status: string | null) {
     return "bg-slate-500 text-white";
   }
   return "bg-emerald-600 text-white";
+}
+
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getServerLocale();
+  const m = getSiteMessages(locale);
+  const logical = logicalPathFromPublicPath(await getPublicPathname());
+  const title = `${m.products.moreSeriesTitle} | Hikuada`;
+  const description = withSeoKeywordFootnote(
+    `${m.products.moreSeriesSubtitle} Wholesale catalog and FCL-ready export.`,
+    locale,
+  );
+  return {
+    title,
+    description,
+    ...(await alternatesWithCanonical(logical)),
+  };
 }
 
 export default async function ProductsPage({

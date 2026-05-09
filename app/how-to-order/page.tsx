@@ -5,13 +5,21 @@ import { HowToOrderTimeline } from "@/components/how-to-order-timeline";
 import { InquiryForm } from "@/components/inquiry-form";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
+import { getPublicPathname } from "@/lib/request-public-path";
 import { getServerLocale } from "@/lib/server-locale";
+import { alternatesWithCanonical, logicalPathFromPublicPath, withSeoKeywordFootnote } from "@/lib/seo-metadata";
 import { getSiteMessages } from "@/lib/site-messages";
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getServerLocale();
   const p = getSiteMessages(locale).howToOrderPage;
-  return { title: p.metaTitle, description: p.metaDescription };
+  const logical = logicalPathFromPublicPath(await getPublicPathname());
+  const description = withSeoKeywordFootnote(p.metaDescription, locale);
+  return {
+    title: p.metaTitle,
+    description,
+    ...(await alternatesWithCanonical(logical)),
+  };
 }
 
 export default async function HowToOrderPage() {

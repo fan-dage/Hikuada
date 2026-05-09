@@ -1,12 +1,22 @@
 import type { Metadata } from "next";
 import { BusinessTermsShell } from "@/components/business-terms-shell";
 import { SiteFooter } from "@/components/site-footer";
+import { getPublicPathname } from "@/lib/request-public-path";
+import { getServerLocale } from "@/lib/server-locale";
+import { alternatesWithCanonical, logicalPathFromPublicPath, withSeoKeywordFootnote } from "@/lib/seo-metadata";
 
-export const metadata: Metadata = {
-  title: "Privacy Policy | Hikuada",
-  description:
-    "How Hikuada collects, uses, and protects personal information in connection with our B2B wholesale website and export manufacturing services.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getServerLocale();
+  const logical = logicalPathFromPublicPath(await getPublicPathname());
+  const raw =
+    "How Hikuada collects, uses, and protects personal information in connection with our B2B wholesale website and export manufacturing services.";
+  const description = withSeoKeywordFootnote(raw, locale);
+  return {
+    title: "Privacy Policy | Hikuada",
+    description,
+    ...(await alternatesWithCanonical(logical)),
+  };
+}
 
 function Section({ id, title, children }: { id?: string; title: string; children: React.ReactNode }) {
   return (

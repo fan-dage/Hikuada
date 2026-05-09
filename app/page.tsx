@@ -13,6 +13,9 @@ import { bannerHeroForLocale, normalizeBannerHero, type BannerHeroRow } from "@/
 import { getServerLocale } from "@/lib/server-locale";
 import { localizeHomeTrustTags } from "@/lib/home-trust-tags-locale";
 import { displayStockStatus, getSiteMessages } from "@/lib/site-messages";
+import type { Metadata } from "next";
+import { alternatesWithCanonical, withSeoKeywordFootnote } from "@/lib/seo-metadata";
+import { getSiteBaseUrl } from "@/lib/site-url";
 
 const PRODUCTS_PER_PAGE = 8;
 
@@ -36,6 +39,32 @@ type Product = {
   image_url: string | null;
   image_object_fit: string | null;
 };
+
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getServerLocale();
+  const base = getSiteBaseUrl();
+  const title = locale === "vi" ? "Hikuada | Nhà máy phào chỉ khung ảnh PS" : "Hikuada | PS Moldings Factory";
+  const rawDesc =
+    locale === "vi"
+      ? "Hikuada — xưởng phào chỉ PS, máy làm khung, giá sỉ và xuất FCL cho nhà nhập khẩu Việt Nam và Đông Nam Á."
+      : "Hikuada — PS frame molding manufacturer, wholesale picture frames, factory-direct pricing and FCL shipping to Vietnam and Southeast Asia.";
+  const description = withSeoKeywordFootnote(rawDesc, locale);
+  const ogImageUrl = `${base}${DEFAULT_BANNER_SRC}`;
+  return {
+    title,
+    description,
+    ...(await alternatesWithCanonical("/")),
+    openGraph: {
+      title,
+      description,
+      type: "website",
+      siteName: "Hikuada",
+      locale: locale === "vi" ? "vi_VN" : "en_US",
+      images: [{ url: DEFAULT_BANNER_SRC, width: 1200, height: 630, alt: DEFAULT_BANNER_ALT }],
+    },
+    twitter: { card: "summary_large_image", title, description, images: [ogImageUrl] },
+  };
+}
 
 export default async function Home({
   searchParams,

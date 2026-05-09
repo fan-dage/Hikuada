@@ -1,14 +1,24 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { AddToInquiryListButton } from "@/components/add-to-inquiry-list-button";
+import { JsonLdProduct } from "@/components/json-ld-product";
 import { ProductDetailMachineryFeatures } from "@/components/product-detail-machinery-features";
 import { ProductDetailSpecsBlock } from "@/components/product-detail-specs-block";
 import { ProductImagePreview } from "@/components/product-image-preview";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { catalogBackHrefForCategory, isProductDetailCategory } from "@/lib/product-catalog-back-href";
+import { getPublicPathname } from "@/lib/request-public-path";
 import { getServerLocale } from "@/lib/server-locale";
+import {
+  alternatesWithCanonical,
+  getRequestCanonicalUrl,
+  logicalPathFromPublicPath,
+  withSeoKeywordFootnote,
+} from "@/lib/seo-metadata";
 import { getSupabaseServerClient } from "@/lib/supabase";
+import { getSiteBaseUrl } from "@/lib/site-url";
 import { displayStockStatus, getSiteMessages } from "@/lib/site-messages";
 
 type ProductRow = {
@@ -36,7 +46,7 @@ function getStockBadgeClass(status: string | null) {
   return "bg-emerald-600 text-white";
 }
 
-export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id: raw } = await params;
   const id = Number(raw);
   if (!Number.isFinite(id) || id <= 0) {
@@ -45,19 +55,46 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   const supabase = getSupabaseServerClient();
   const { data } = await supabase
     .from("hikuada_products")
-    .select("model, display_name, category")
+    .select("model, display_name, category, image_url, stock_status")
     .eq("id", id)
     .maybeSingle();
   if (!data || !isProductDetailCategory(data.category as string | null)) {
     return { title: "Hikuada" };
   }
+  const locale = await getServerLocale();
   const rawDn = data.display_name;
   const displayName = typeof rawDn === "string" && rawDn.trim().length > 0 ? rawDn.trim() : "";
   const model = (data.model as string | null)?.trim() || `Product #${id}`;
   const titleHead = displayName || model;
+  const logical = logicalPathFromPublicPath(await getPublicPathname());
+  const base = getSiteBaseUrl();
+  const rawDesc = `${titleHead} — ${locale === "vi" ? "thông số kỹ thuật, báo giá xưởng mua sỉ." : "specifications and factory-direct wholesale inquiry."}`;
+  const description = withSeoKeywordFootnote(rawDesc, locale);
+  const imgPath = (data.image_url as string | null)?.trim();
+  const ogImage =
+    imgPath && (imgPath.startsWith("http://") || imgPath.startsWith("https://"))
+      ? imgPath
+      : imgPath
+        ? `${base}${imgPath.startsWith("/") ? "" : "/"}${imgPath}`
+        : `${base}/icon.png`;
+
   return {
     title: `${titleHead} | Hikuada`,
-    description: `${titleHead} — specifications and factory-direct wholesale inquiry.`,
+    description,
+    ...(await alternatesWithCanonical(logical)),
+    openGraph: {
+      title: `${titleHead} | Hikuada`,
+      description,
+      type: "website",
+      siteName: "Hikuada",
+      images: [{ url: ogImage, width: 1200, height: 630, alt: titleHead }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `${titleHead} | Hikuada`,
+      description,
+      images: [ogImage],
+    },
   };
 }
 
@@ -103,9 +140,19 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
   const displayTitle = product.display_name?.trim() || product.model?.trim() || "—";
   const modelSku = product.model?.trim() || "—";
   const hasDetailSpecs = Boolean(product.detail_specs?.trim());
+  const productPageUrl = await getRequestCanonicalUrl();
+  const schemaDescription = `${displayTitle} (${modelSku}). ${m.productDetail.fullSpecsHeading}.`;
 
   return (
     <main className="min-h-screen bg-slate-50 text-slate-900">
+      <JsonLdProduct
+        name={displayTitle}
+        description={schemaDescription}
+        imageUrl={product.image_url}
+        sku={modelSku}
+        productPageUrl={productPageUrl}
+        stockStatus={product.stock_status}
+      />
       <SiteHeader />
       <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10">
         <Link

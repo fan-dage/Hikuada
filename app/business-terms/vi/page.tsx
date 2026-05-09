@@ -1,11 +1,21 @@
 import type { Metadata } from "next";
 import { BusinessTermsShell } from "@/components/business-terms-shell";
+import { getPublicPathname } from "@/lib/request-public-path";
+import { getServerLocale } from "@/lib/server-locale";
+import { alternatesWithCanonical, logicalPathFromPublicPath, withSeoKeywordFootnote } from "@/lib/seo-metadata";
 
-export const metadata: Metadata = {
-  title: "Điều khoản kinh doanh & Hướng dẫn đặt hàng | Hikuada",
-  description:
-    "Điều khoản thương mại, quy trình đặt hàng và hướng dẫn thực tế dành cho khách hàng mua sỉ phào chỉ PS và sản phẩm liên quan từ Hikuada.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getServerLocale();
+  const logical = logicalPathFromPublicPath(await getPublicPathname());
+  const raw =
+    "Điều khoản thương mại, quy trình đặt hàng và hướng dẫn thực tế dành cho khách hàng mua sỉ phào chỉ PS và sản phẩm liên quan từ Hikuada.";
+  const description = withSeoKeywordFootnote(raw, locale);
+  return {
+    title: "Điều khoản kinh doanh & Hướng dẫn đặt hàng | Hikuada",
+    description,
+    ...(await alternatesWithCanonical(logical)),
+  };
+}
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (

@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import { InquiryForm } from "@/components/inquiry-form";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
+import { getPublicPathname } from "@/lib/request-public-path";
 import { getServerLocale } from "@/lib/server-locale";
+import { alternatesWithCanonical, logicalPathFromPublicPath, withSeoKeywordFootnote } from "@/lib/seo-metadata";
 import { getSiteMessages } from "@/lib/site-messages";
 
 function BoldText({ text }: { text: string }) {
@@ -21,7 +23,13 @@ function BoldText({ text }: { text: string }) {
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getServerLocale();
   const a = getSiteMessages(locale).about;
-  return { title: a.metaTitle, description: a.metaDescription };
+  const logical = logicalPathFromPublicPath(await getPublicPathname());
+  const description = withSeoKeywordFootnote(a.metaDescription, locale);
+  return {
+    title: a.metaTitle,
+    description,
+    ...(await alternatesWithCanonical(logical)),
+  };
 }
 
 export default async function AboutPage() {

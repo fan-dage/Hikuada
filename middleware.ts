@@ -2,7 +2,12 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { acceptLanguagePrefersVietnamese, countryIsVietnam } from "@/lib/detect-locale";
 import type { AppLocale } from "@/lib/site-locale-constants";
-import { HIKUADA_LOCALE_COOKIE, HIKUADA_LOCALE_HEADER, isAppLocale } from "@/lib/site-locale-constants";
+import {
+  HIKUADA_LOCALE_COOKIE,
+  HIKUADA_LOCALE_HEADER,
+  HIKUADA_PUBLIC_PATH_HEADER,
+  isAppLocale,
+} from "@/lib/site-locale-constants";
 
 function detectDefaultLocale(request: NextRequest): AppLocale {
   const country =
@@ -12,7 +17,43 @@ function detectDefaultLocale(request: NextRequest): AppLocale {
   return "en";
 }
 
+function stripLocalePrefix(pathname: string): { locale: AppLocale; path: string } | null {
+  if (pathname === "/vi" || pathname === "/vi/") {
+    return { locale: "vi", path: "/" };
+  }
+  if (pathname === "/en" || pathname === "/en/") {
+    return { locale: "en", path: "/" };
+  }
+  if (pathname.startsWith("/vi/")) {
+    return { locale: "vi", path: pathname.slice(3) || "/" };
+  }
+  if (pathname.startsWith("/en/")) {
+    return { locale: "en", path: pathname.slice(3) || "/" };
+  }
+  return null;
+}
+
 export function middleware(request: NextRequest) {
+  const pathname = request.nextUrl.pathname;
+
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set(HIKUADA_PUBLIC_PATH_HEADER, pathname);
+
+  const stripped = stripLocalePrefix(pathname);
+  if (stripped) {
+    requestHeaders.set(HIKUADA_LOCALE_HEADER, stripped.locale);
+    const url = request.nextUrl.clone();
+    url.pathname = stripped.path;
+    const res = NextResponse.rewrite(url, { request: { headers: requestHeaders } });
+    res.cookies.set(HIKUADA_LOCALE_COOKIE, stripped.locale, {
+      path: "/",
+      maxAge: 60 * 60 * 24 * 365,
+      sameSite: "lax",
+      httpOnly: false,
+    });
+    return res;
+  }
+
   const existing = request.cookies.get(HIKUADA_LOCALE_COOKIE)?.value;
   let locale: AppLocale;
 
@@ -22,7 +63,6 @@ export function middleware(request: NextRequest) {
     locale = detectDefaultLocale(request);
   }
 
-  const requestHeaders = new Headers(request.headers);
   requestHeaders.set(HIKUADA_LOCALE_HEADER, locale);
 
   const response = NextResponse.next({
@@ -34,7 +74,6 @@ export function middleware(request: NextRequest) {
       path: "/",
       maxAge: 60 * 60 * 24 * 365,
       sameSite: "lax",
-      // Must be readable/writable from document.cookie so the header language switcher can override auto-detected locale.
       httpOnly: false,
     });
   }

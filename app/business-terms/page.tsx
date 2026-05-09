@@ -1,11 +1,21 @@
 import type { Metadata } from "next";
 import { BusinessTermsShell } from "@/components/business-terms-shell";
+import { getPublicPathname } from "@/lib/request-public-path";
+import { getServerLocale } from "@/lib/server-locale";
+import { alternatesWithCanonical, logicalPathFromPublicPath, withSeoKeywordFootnote } from "@/lib/seo-metadata";
 
-export const metadata: Metadata = {
-  title: "Business Terms & Ordering Guide | Hikuada",
-  description:
-    "Commercial terms, ordering workflow, and practical guidance for wholesale buyers sourcing PS moldings and related products from Hikuada.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getServerLocale();
+  const logical = logicalPathFromPublicPath(await getPublicPathname());
+  const raw =
+    "Commercial terms, ordering workflow, and practical guidance for wholesale buyers sourcing PS moldings and related products from Hikuada.";
+  const description = withSeoKeywordFootnote(raw, locale);
+  return {
+    title: "Business Terms & Ordering Guide | Hikuada",
+    description,
+    ...(await alternatesWithCanonical(logical)),
+  };
+}
 
 function Section({ id, title, children }: { id?: string; title: string; children: React.ReactNode }) {
   return (
