@@ -97,6 +97,8 @@ export type SiteMessages = {
     empty: string;
     previous: string;
     next: string;
+    /** Accessible name for the products list pagination control */
+    paginationAria: string;
   };
   howToOrderPage: {
     metaTitle: string;
@@ -240,6 +242,7 @@ const en: SiteMessages = {
     empty: "No products yet. Add products in Admin under “Product management”.",
     previous: "Previous",
     next: "Next",
+    paginationAria: "Product list pages",
   },
   howToOrderPage: {
     metaTitle: "How to Order & Business Terms | Hikuada",
@@ -383,6 +386,7 @@ const vi: SiteMessages = {
     empty: "Chưa có dữ liệu sản phẩm. Vui lòng thêm sản phẩm trong Admin.",
     previous: "Trước",
     next: "Tiếp",
+    paginationAria: "Phân trang danh sách sản phẩm",
   },
   howToOrderPage: {
     metaTitle: "Quy trình đặt hàng & Điều khoản kinh doanh | Hikuada",

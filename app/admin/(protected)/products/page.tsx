@@ -1,9 +1,33 @@
 import { revalidatePath } from "next/cache";
+import Link from "next/link";
 import { redirect } from "next/navigation";
+import { getPageList } from "@/lib/pagination-page-list";
 import { getSupabaseServerClient } from "@/lib/supabase";
 import { AdminProductsTable } from "@/components/admin-products-table";
 import { mkdir, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
+
+const ADMIN_PRODUCTS_PER_PAGE = 50;
+const ADMIN_SEARCH_MAX_LEN = 100;
+
+function hrefAdminProductsList(page: number, q: string) {
+  const params = new URLSearchParams();
+  const trimmed = q.trim();
+  if (trimmed) params.set("q", trimmed);
+  if (page > 1) params.set("page", String(page));
+  const s = params.toString();
+  return s ? `/admin/products?${s}` : "/admin/products";
+}
+
+/** Strip characters that break PostgREST `.or()` comma-separated filters */
+function sanitizeAdminSearchInput(raw: string) {
+  return raw.replace(/,/g, " ").trim().slice(0, ADMIN_SEARCH_MAX_LEN);
+}
+
+function ilikeOrPattern(q: string) {
+  const escaped = q.replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_");
+  return `%${escaped}%`;
+}
 
 type Product = {
   id: number;
@@ -695,18 +719,56 @@ export default async function AdminProductsPage({
   searchParams,
 }: {
   searchParams?:
-    | { imported?: string; bulk_skipped?: string; bulk_err?: string }
-    | Promise<{ imported?: string; bulk_skipped?: string; bulk_err?: string }>;
+    | { page?: string; q?: string; imported?: string; bulk_skipped?: string; bulk_err?: string }
+    | Promise<{
+        page?: string;
+        q?: string;
+        imported?: string;
+        bulk_skipped?: string;
+        bulk_err?: string;
+      }>;
 }) {
   const sp = await Promise.resolve(searchParams ?? {});
+  const rawQ = sanitizeAdminSearchInput(typeof sp.q === "string" ? sp.q : "");
+  const rawPage = Number(sp.page || "1");
+  const currentPage = Number.isFinite(rawPage) && rawPage > 0 ? Math.floor(rawPage) : 1;
   const supabase = getSupabaseServerClient();
-  const { data, error } = await supabase
+  const from = (currentPage - 1) * ADMIN_PRODUCTS_PER_PAGE;
+  const to = from + ADMIN_PRODUCTS_PER_PAGE - 1;
+
+  let listQuery = supabase
     .from("hikuada_products")
     .select(
       "id, model, category, sort_order, size, packing_spec, stock_status, stock_quantity, image_url, image_object_fit, created_at",
+      { count: "exact" },
     )
     .order("sort_order", { ascending: true, nullsFirst: false })
     .order("created_at", { ascending: false });
+
+  if (rawQ.length > 0) {
+    const pat = ilikeOrPattern(rawQ);
+    listQuery = listQuery.or(
+      `model.ilike.${pat},size.ilike.${pat},packing_spec.ilike.${pat},category.ilike.${pat}`,
+    );
+  }
+
+  const [listRes, imagePickRes] = await Promise.all([
+    listQuery.range(from, to),
+    supabase
+      .from("hikuada_products")
+      .select("image_url, model")
+      .not("image_url", "is", null)
+      .order("sort_order", { ascending: true, nullsFirst: false })
+      .order("created_at", { ascending: false })
+      .limit(3000),
+  ]);
+
+  const { data, error, count } = listRes;
+  const totalCount = count ?? 0;
+  const totalPages = Math.max(1, Math.ceil(totalCount / ADMIN_PRODUCTS_PER_PAGE));
+  if (totalCount > 0 && currentPage > totalPages) {
+    redirect(hrefAdminProductsList(totalPages, rawQ));
+  }
 
   const products = (data || []) as Product[];
 
@@ -726,9 +788,12 @@ export default async function AdminProductsPage({
         ];
   const existingImageOptions = Array.from(
     new Map(
-      products
-        .filter((product) => product.image_url)
-        .map((product) => [product.image_url as string, product.model || product.image_url || ""])
+      (imagePickRes.data || [])
+        .filter((row: { image_url: string | null }) => row.image_url)
+        .map((row: { image_url: string; model: string | null }) => [
+          row.image_url,
+          row.model || row.image_url || "",
+        ]),
     ).entries(),
   );
 
@@ -896,18 +961,126 @@ export default async function AdminProductsPage({
       <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
         {error ? (
           <p className="p-6 text-sm text-red-600">加载产品失败：{error.message}</p>
-        ) : products.length === 0 ? (
-          <p className="p-6 text-sm text-slate-600">暂无产品，请先新增。</p>
         ) : (
-          <AdminProductsTable
-            products={products}
-            deleteAction={deleteProducts}
-            clearImageAction={clearProductImage}
-            updateAction={updateProduct}
-            updateSortOrderAction={updateProductSortOrder}
-            existingImageOptions={existingImageOptions}
-            categoryOptions={categoryOptions.map((category) => [category.slug, category.name])}
-          />
+          <>
+            <div className="border-b border-slate-200 px-4 py-3">
+              <form method="get" action="/admin/products" className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+                <input
+                  type="search"
+                  name="q"
+                  defaultValue={rawQ}
+                  placeholder="搜索型号、尺寸、包装规格、分类…"
+                  autoComplete="off"
+                  className="min-w-0 flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none ring-slate-400 focus:ring-2"
+                />
+                <div className="flex shrink-0 flex-wrap gap-2">
+                  <button
+                    type="submit"
+                    className="rounded-lg border border-slate-900 bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800"
+                  >
+                    搜索
+                  </button>
+                  {rawQ ? (
+                    <Link
+                      href="/admin/products"
+                      className="inline-flex items-center justify-center rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                    >
+                      清空
+                    </Link>
+                  ) : null}
+                </div>
+              </form>
+            </div>
+            {totalCount === 0 && !rawQ ? (
+              <p className="p-6 text-sm text-slate-600">暂无产品，请先新增。</p>
+            ) : totalCount === 0 && rawQ ? (
+              <p className="p-6 text-sm text-slate-600">
+                未找到与「<span className="font-medium text-slate-800">{rawQ}</span>」匹配的产品。
+              </p>
+            ) : (
+              <>
+                <div className="border-b border-slate-100 bg-slate-50/80 px-4 py-2 text-xs text-slate-600">
+                  共 <span className="font-semibold tabular-nums">{totalCount}</span> 条
+                  {rawQ ? (
+                    <>
+                      （关键词「<span className="font-medium text-slate-800">{rawQ}</span>」）
+                    </>
+                  ) : null}
+                  ；当前第 <span className="font-semibold tabular-nums">{currentPage}</span> / {totalPages} 页（每页{" "}
+                  {ADMIN_PRODUCTS_PER_PAGE} 条）
+                </div>
+                <AdminProductsTable
+                  products={products}
+                  deleteAction={deleteProducts}
+                  clearImageAction={clearProductImage}
+                  updateAction={updateProduct}
+                  updateSortOrderAction={updateProductSortOrder}
+                  existingImageOptions={existingImageOptions}
+                  categoryOptions={categoryOptions.map((category) => [category.slug, category.name])}
+                />
+                {totalPages > 1 ? (
+                  <nav
+                    className="flex flex-wrap items-center justify-center gap-2 border-t border-slate-100 px-4 py-4"
+                    aria-label="产品列表分页"
+                  >
+                    {currentPage > 1 ? (
+                      <Link
+                        href={hrefAdminProductsList(currentPage - 1, rawQ)}
+                        className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                      >
+                        上一页
+                      </Link>
+                    ) : (
+                      <span className="cursor-not-allowed rounded-lg border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-medium text-slate-400">
+                        上一页
+                      </span>
+                    )}
+                    <div className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2">
+                      {getPageList(currentPage, totalPages).map((item, idx) =>
+                        item === "ellipsis" ? (
+                          <span
+                            key={`ellipsis-${idx}`}
+                            className="px-1 text-sm font-medium text-slate-400"
+                            aria-hidden
+                          >
+                            …
+                          </span>
+                        ) : item === currentPage ? (
+                          <span
+                            key={item}
+                            className="inline-flex min-w-10 items-center justify-center rounded-lg border border-slate-900 bg-slate-900 px-3 py-2 text-sm font-semibold text-white"
+                            aria-current="page"
+                          >
+                            {item}
+                          </span>
+                        ) : (
+                          <Link
+                            key={item}
+                            href={hrefAdminProductsList(item, rawQ)}
+                            className="inline-flex min-w-10 items-center justify-center rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                          >
+                            {item}
+                          </Link>
+                        ),
+                      )}
+                    </div>
+                    {currentPage < totalPages ? (
+                      <Link
+                        href={hrefAdminProductsList(currentPage + 1, rawQ)}
+                        className="rounded-lg border border-slate-900 bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800"
+                      >
+                        下一页
+                      </Link>
+                    ) : (
+                      <span className="cursor-not-allowed rounded-lg border border-slate-200 bg-slate-100 px-4 py-2 text-sm font-medium text-slate-400">
+                        下一页
+                      </span>
+                    )}
+                  </nav>
+                ) : null}
+              </>
+            )}
+          </>
         )}
       </section>
     </div>

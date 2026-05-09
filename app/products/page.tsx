@@ -8,9 +8,18 @@ import { ProductsCategoryNav } from "@/components/products-category-nav";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { getServerLocale } from "@/lib/server-locale";
+import { getPageList } from "@/lib/pagination-page-list";
 import { displayStockStatus, getSiteMessages } from "@/lib/site-messages";
 
 const PRODUCTS_PER_PAGE = 16;
+
+function hrefForProductsPage(page: number, category: "ps_moldings" | "frame_machinery_consumables" | "finished_products_others" | null) {
+  const qs = new URLSearchParams();
+  if (category) qs.set("category", category);
+  if (page > 1) qs.set("page", String(page));
+  const s = qs.toString();
+  return s ? `/products?${s}` : "/products";
+}
 
 type Product = {
   id: number;
@@ -85,8 +94,10 @@ export default async function ProductsPage({
 
   const products = (data || []) as Product[];
   const totalCount = count || 0;
+  const totalPages = Math.max(1, Math.ceil(totalCount / PRODUCTS_PER_PAGE));
   const hasPrevPage = currentPage > 1;
-  const hasNextPage = currentPage * PRODUCTS_PER_PAGE < totalCount;
+  const hasNextPage = currentPage < totalPages;
+  const pageItems = getPageList(currentPage, totalPages);
 
   return (
     <main className="min-h-screen bg-slate-50 text-slate-900">
@@ -153,37 +164,67 @@ export default async function ProductsPage({
           </div>
         )}
 
-        {(hasPrevPage || hasNextPage) && (
-          <div className="mt-8 flex justify-center gap-3">
-            {hasPrevPage && (
+        {totalPages > 1 && (
+          <nav
+            className="mt-8 flex flex-wrap items-center justify-center gap-2"
+            aria-label={m.products.paginationAria}
+          >
+            {hasPrevPage ? (
               <Link
-                href={
-                  currentPage - 1 <= 1
-                    ? validCategory
-                      ? `/products?category=${validCategory}`
-                      : "/products"
-                    : validCategory
-                      ? `/products?page=${currentPage - 1}&category=${validCategory}`
-                      : `/products?page=${currentPage - 1}`
-                }
+                href={hrefForProductsPage(currentPage - 1, validCategory)}
                 className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
               >
                 {m.products.previous}
               </Link>
+            ) : (
+              <span className="cursor-not-allowed rounded-lg border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-medium text-slate-400">
+                {m.products.previous}
+              </span>
             )}
-            {hasNextPage && (
+
+            <div className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2">
+              {pageItems.map((item, idx) =>
+                item === "ellipsis" ? (
+                  <span
+                    key={`e-${idx}`}
+                    className="px-1 text-sm font-medium text-slate-400"
+                    aria-hidden
+                  >
+                    …
+                  </span>
+                ) : item === currentPage ? (
+                  <span
+                    key={item}
+                    className="inline-flex min-w-10 items-center justify-center rounded-lg border border-slate-900 bg-slate-900 px-3 py-2 text-sm font-semibold text-white"
+                    aria-current="page"
+                  >
+                    {item}
+                  </span>
+                ) : (
+                  <Link
+                    key={item}
+                    href={hrefForProductsPage(item, validCategory)}
+                    className="inline-flex min-w-10 items-center justify-center rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                  >
+                    {item}
+                  </Link>
+                ),
+              )}
+            </div>
+
+            {hasNextPage ? (
               <Link
-                href={
-                  validCategory
-                    ? `/products?page=${currentPage + 1}&category=${validCategory}`
-                    : `/products?page=${currentPage + 1}`
-                }
+                href={hrefForProductsPage(currentPage + 1, validCategory)}
                 className="rounded-lg border border-slate-900 bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800"
               >
                 {m.products.next}
               </Link>
+            ) : (
+              <span className="cursor-not-allowed rounded-lg border border-slate-200 bg-slate-100 px-4 py-2 text-sm font-medium text-slate-400">
+                {m.products.next}
+              </span>
             )}
-          </div>
+          </nav>
         )}
       </div>
       <SiteFooter />

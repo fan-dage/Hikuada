@@ -154,7 +154,7 @@ export function AdminProductsTable({
                   type="checkbox"
                   checked={allSelected}
                   onChange={(event) => toggleSelectAll(event.target.checked)}
-                  aria-label="全选产品"
+                  aria-label="全选当前页产品"
                 />
               </th>
               <th className="border-b border-slate-200 px-2 py-2.5 whitespace-nowrap">型号</th>
