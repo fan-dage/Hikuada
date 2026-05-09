@@ -4,6 +4,7 @@ import { AddToInquiryListButton } from "@/components/add-to-inquiry-list-button"
 import { ProductCardSpecs } from "@/components/product-card-specs";
 import { ProductImagePreview } from "@/components/product-image-preview";
 import { productCardImageObjectFit } from "@/lib/product-card-image-fit";
+import { ProductsCategoryNav } from "@/components/products-category-nav";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { getServerLocale } from "@/lib/server-locale";
@@ -90,51 +91,27 @@ export default async function ProductsPage({
   return (
     <main className="min-h-screen bg-slate-50 text-slate-900">
       <SiteHeader />
-      <div className="mx-auto max-w-6xl px-6 py-10">
-        <header className="mb-8 flex items-end justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold">{categoryTitle}</h1>
-            <p className="mt-2 text-slate-600">{categorySubtitle}</p>
+      <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10">
+        <header className="mb-6 flex flex-col gap-3 sm:mb-8 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+          <div className="min-w-0 sm:flex-1">
+            <h1 className="text-balance text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">{categoryTitle}</h1>
+            <p className="mt-2 text-pretty text-sm leading-relaxed text-slate-600 sm:text-base">{categorySubtitle}</p>
           </div>
           <Link
             href="/#products"
-            className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+            className="hidden whitespace-nowrap rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 sm:mt-0.5 sm:inline-flex sm:shrink-0 sm:items-center sm:justify-center sm:self-auto"
           >
             {m.products.backToHome}
           </Link>
         </header>
-        <div className="mb-8 flex flex-wrap items-center gap-3">
-          <Link
-            href="/products?category=ps_moldings"
-            className={`rounded-lg border px-4 py-2 text-sm font-medium transition ${
-              validCategory === "ps_moldings"
-                ? "border-slate-900 bg-slate-900 text-white"
-                : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
-            }`}
-          >
-            {m.nav.productsMenu.pictureFrameMoldings}
-          </Link>
-          <Link
-            href="/products?category=frame_machinery_consumables"
-            className={`rounded-lg border px-4 py-2 text-sm font-medium transition ${
-              validCategory === "frame_machinery_consumables"
-                ? "border-slate-900 bg-slate-900 text-white"
-                : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
-            }`}
-          >
-            {m.nav.productsMenu.frameMachineryConsumables}
-          </Link>
-          <Link
-            href="/products?category=finished_products_others"
-            className={`rounded-lg border px-4 py-2 text-sm font-medium transition ${
-              validCategory === "finished_products_others"
-                ? "border-slate-900 bg-slate-900 text-white"
-                : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
-            }`}
-          >
-            {m.nav.productsMenu.finishedOtherProducts}
-          </Link>
-        </div>
+        <ProductsCategoryNav
+          validCategory={validCategory}
+          navAriaLabel={m.nav.productsMenu.trigger}
+          categorySelectAll={m.products.categorySelectAll}
+          pictureFrameMoldings={m.nav.productsMenu.pictureFrameMoldings}
+          frameMachineryConsumables={m.nav.productsMenu.frameMachineryConsumables}
+          finishedOtherProducts={m.nav.productsMenu.finishedOtherProducts}
+        />
 
         {products.length === 0 ? (
           <div className="rounded-xl border border-dashed border-slate-300 bg-white p-8 text-sm text-slate-500">

@@ -1,4 +1,5 @@
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { getSupabaseServerClient } from "@/lib/supabase";
 import { AdminProductsTable } from "@/components/admin-products-table";
 import { mkdir, unlink, writeFile } from "node:fs/promises";
@@ -94,6 +95,123 @@ function omitProductPayloadKeys<T extends Record<string, unknown>>(row: T, keys:
   const next = { ...row };
   for (const k of keys) delete next[k];
   return next;
+}
+
+const BULK_MAX_ROWS = 500;
+const BULK_MAX_BYTES = 512 * 1024;
+
+function parseCsvLine(line: string): string[] {
+  const out: string[] = [];
+  let cur = "";
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (c === '"') {
+      if (inQuotes && line[i + 1] === '"') {
+        cur += '"';
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if ((c === "," || c === "\t") && !inQuotes) {
+      out.push(cur);
+      cur = "";
+    } else {
+      cur += c;
+    }
+  }
+  out.push(cur);
+  return out.map((s) => s.trim());
+}
+
+type BulkRowFields = {
+  model: string;
+  category: string;
+  size_width: string;
+  size_height: string;
+  packing_length: string;
+  packing_pcs: string;
+  sort_order: string;
+  stock_status: string;
+  stock_quantity: string;
+  image_object_fit: string;
+  image_url: string;
+};
+
+const HEADER_TO_FIELD: Record<string, keyof BulkRowFields> = {
+  model: "model",
+  型号: "model",
+  category: "category",
+  分类: "category",
+  size_width_mm: "size_width",
+  size_width: "size_width",
+  宽度_mm: "size_width",
+  宽度mm: "size_width",
+  size_height_mm: "size_height",
+  size_height: "size_height",
+  高度_mm: "size_height",
+  高度mm: "size_height",
+  packing_length_m: "packing_length",
+  packing_length: "packing_length",
+  包装长度_m: "packing_length",
+  packing_pcs: "packing_pcs",
+  每箱pcs: "packing_pcs",
+  sort_order: "sort_order",
+  排序: "sort_order",
+  stock_status: "stock_status",
+  库存状态: "stock_status",
+  stock_quantity: "stock_quantity",
+  库存数量: "stock_quantity",
+  image_object_fit: "image_object_fit",
+  图片适应: "image_object_fit",
+  image_url: "image_url",
+  图片url: "image_url",
+};
+
+function normalizeHeaderCell(raw: string): string {
+  const t = raw.trim();
+  if (/^[a-zA-Z0-9_]+$/.test(t)) return t.toLowerCase();
+  return t;
+}
+
+type BulkColumnIndex = Partial<Record<keyof BulkRowFields, number>> & {
+  model: number;
+  size_width: number;
+  size_height: number;
+};
+
+function buildHeaderIndex(headerCells: string[]): BulkColumnIndex | null {
+  const idx: Partial<Record<keyof BulkRowFields, number>> = {};
+  headerCells.forEach((cell, i) => {
+    const key = normalizeHeaderCell(cell);
+    const field = HEADER_TO_FIELD[key];
+    if (field && idx[field] === undefined) {
+      idx[field] = i;
+    }
+  });
+  if (idx.model === undefined || idx.size_width === undefined || idx.size_height === undefined) {
+    return null;
+  }
+  return idx as BulkColumnIndex;
+}
+
+function cellAt(cells: string[], index: number | undefined): string {
+  if (index === undefined || index < 0 || index >= cells.length) return "";
+  return cells[index]?.trim() ?? "";
+}
+
+function bulkImportErrorMessage(code: string): string {
+  const map: Record<string, string> = {
+    empty: "请选择 CSV 文件后再上传。",
+    too_large: "文件过大（超过 512KB），请拆分后重试。",
+    no_rows: "CSV 中没有有效数据行。",
+    bad_header: "表头不正确：需包含列「型号」「宽度_mm」「高度_mm」（请下载模板对照）。",
+    too_many_rows: `单次最多导入 ${BULK_MAX_ROWS} 行，请拆分文件。`,
+    supabase: "服务器未配置 Supabase，无法导入。",
+    read: "读取文件失败。",
+    all_skipped: "没有成功导入任何一行，请检查型号、宽度/高度是否为有效数字。",
+  };
+  return map[code] || "批量导入失败。";
 }
 
 async function insertProductRow(
@@ -238,6 +356,141 @@ async function createProduct(formData: FormData) {
     const message = err instanceof Error ? err.message : "保存失败";
     throw new Error(message);
   }
+}
+
+async function bulkImportProducts(formData: FormData) {
+  "use server";
+  const file = formData.get("bulk_file");
+  if (!(file instanceof File) || file.size === 0) {
+    redirect("/admin/products?bulk_err=empty");
+  }
+  if (file.size > BULK_MAX_BYTES) {
+    redirect("/admin/products?bulk_err=too_large");
+  }
+
+  let supabase: ReturnType<typeof getSupabaseServerClient>;
+  try {
+    supabase = getSupabaseServerClient();
+  } catch {
+    redirect("/admin/products?bulk_err=supabase");
+  }
+
+  let text: string;
+  try {
+    text = await file.text();
+  } catch {
+    redirect("/admin/products?bulk_err=read");
+  }
+
+  const normalized = text.replace(/^\uFEFF/, "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+  const lines = normalized.split("\n");
+  const nonEmpty = lines
+    .map((l) => l.trimEnd())
+    .filter((l) => {
+      const t = l.trim();
+      return t.length > 0 && !t.startsWith("#");
+    });
+  if (nonEmpty.length < 2) {
+    redirect("/admin/products?bulk_err=no_rows");
+  }
+
+  const headerCells = parseCsvLine(nonEmpty[0]);
+  const col = buildHeaderIndex(headerCells);
+  if (!col) {
+    redirect("/admin/products?bulk_err=bad_header");
+  }
+
+  const dataLines = nonEmpty.slice(1);
+  if (dataLines.length > BULK_MAX_ROWS) {
+    redirect("/admin/products?bulk_err=too_many_rows");
+  }
+
+  let imported = 0;
+  let skipped = 0;
+
+  for (const line of dataLines) {
+    if (!line.trim()) continue;
+    const cells = parseCsvLine(line);
+    const model = cellAt(cells, col.model);
+    if (!model) {
+      skipped++;
+      continue;
+    }
+
+    const sizeWidthRaw = cellAt(cells, col.size_width);
+    const sizeHeightRaw = cellAt(cells, col.size_height);
+    const sizeWidth = Number(sizeWidthRaw);
+    const sizeHeight = Number(sizeHeightRaw);
+    if (Number.isNaN(sizeWidth) || Number.isNaN(sizeHeight) || sizeWidth <= 0 || sizeHeight <= 0) {
+      skipped++;
+      continue;
+    }
+    const size = `${sizeWidth} x ${sizeHeight} mm`;
+
+    const category = cellAt(cells, col.category) || "ps_moldings";
+
+    const packingLengthRaw = cellAt(cells, col.packing_length);
+    const packingPcsRaw = cellAt(cells, col.packing_pcs);
+    let packingSpec = "";
+    if (packingLengthRaw || packingPcsRaw) {
+      const packingLength = packingLengthRaw ? Number(packingLengthRaw) : NaN;
+      const packingPcs = packingPcsRaw ? Number(packingPcsRaw) : NaN;
+      if (
+        !Number.isNaN(packingLength) &&
+        !Number.isNaN(packingPcs) &&
+        packingLength > 0 &&
+        packingPcs > 0
+      ) {
+        packingSpec = `${packingLength}m x ${packingPcs} pcs / carton`;
+      }
+    }
+
+    const sortOrderRaw = cellAt(cells, col.sort_order) || "100";
+    const parsedSortOrder = Number(sortOrderRaw);
+    const sortOrder = Number.isNaN(parsedSortOrder) || parsedSortOrder < 0 ? 100 : parsedSortOrder;
+
+    const stockStatus = cellAt(cells, col.stock_status) || "In Stock";
+    const stockQtyRaw = cellAt(cells, col.stock_quantity);
+    const parsedStockQuantity = stockQtyRaw ? Number(stockQtyRaw) : null;
+    const stockQuantity =
+      parsedStockQuantity !== null && Number.isNaN(parsedStockQuantity) ? null : parsedStockQuantity;
+
+    const imageFitRaw = cellAt(cells, col.image_object_fit).toLowerCase();
+    const image_object_fit = imageFitRaw === "contain" ? "contain" : "cover";
+
+    const imageUrlRaw = cellAt(cells, col.image_url);
+    const image_url = imageUrlRaw.length > 0 ? imageUrlRaw : null;
+
+    const { error } = await insertProductRow(supabase, {
+      model,
+      category,
+      size,
+      packing_spec: packingSpec,
+      sort_order: sortOrder,
+      stock_status: stockStatus,
+      stock_quantity: stockQuantity,
+      image_url,
+      image_object_fit,
+    });
+
+    if (error) {
+      skipped++;
+      continue;
+    }
+    imported++;
+  }
+
+  revalidatePath("/admin/products");
+  revalidatePath("/");
+  revalidatePath("/products");
+
+  if (imported === 0) {
+    redirect("/admin/products?bulk_err=all_skipped");
+  }
+  if (skipped > 0) {
+    redirect(`/admin/products?imported=${imported}&bulk_skipped=${skipped}`);
+  }
+  redirect(`/admin/products?imported=${imported}`);
 }
 
 async function deleteProducts(formData: FormData) {
@@ -438,7 +691,14 @@ async function updateProductSortOrder(formData: FormData) {
   }
 }
 
-export default async function AdminProductsPage() {
+export default async function AdminProductsPage({
+  searchParams,
+}: {
+  searchParams?:
+    | { imported?: string; bulk_skipped?: string; bulk_err?: string }
+    | Promise<{ imported?: string; bulk_skipped?: string; bulk_err?: string }>;
+}) {
+  const sp = await Promise.resolve(searchParams ?? {});
   const supabase = getSupabaseServerClient();
   const { data, error } = await supabase
     .from("hikuada_products")
@@ -478,9 +738,23 @@ export default async function AdminProductsPage() {
         <h2 className="text-sm font-medium text-slate-900">产品管理</h2>
       </header>
 
+      {sp.imported ? (
+        <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+          成功导入 <span className="font-semibold">{sp.imported}</span> 条产品
+          {sp.bulk_skipped
+            ? `；已跳过 ${sp.bulk_skipped} 行（型号为空、尺寸无效或与数据库约束冲突）。`
+            : "。"}
+        </div>
+      ) : null}
+      {sp.bulk_err ? (
+        <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+          {bulkImportErrorMessage(sp.bulk_err)}
+        </div>
+      ) : null}
+
       <section className="mb-4 rounded-2xl border border-slate-200 bg-white p-6">
         <h3 className="text-sm font-semibold text-slate-900">新增产品</h3>
-        <form action={createProduct} className="mt-4 grid gap-3 md:grid-cols-2">
+        <form id="admin-create-product" action={createProduct} className="mt-4 grid gap-3 md:grid-cols-2">
           <input
             name="model"
             required
@@ -585,13 +859,38 @@ export default async function AdminProductsPage() {
               </option>
             ))}
           </select>
+        </form>
+        <div className="mt-4 flex flex-col gap-4 border-t border-slate-100 pt-4 sm:flex-row sm:items-end sm:justify-between">
           <button
             type="submit"
-            className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800 md:col-span-2 md:w-fit"
+            form="admin-create-product"
+            className="w-fit rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800"
           >
             保存产品
           </button>
-        </form>
+          <div className="flex flex-col gap-3 sm:items-end">
+            <a
+              href="/api/admin/products/bulk-template"
+              className="inline-flex w-fit items-center justify-center rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-800 transition hover:bg-slate-50"
+            >
+              下载批量模板
+            </a>
+            <form action={bulkImportProducts} className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <input
+                type="file"
+                name="bulk_file"
+                accept=".csv,text/csv"
+                className="max-w-full text-sm file:mr-2 file:rounded-md file:border-0 file:bg-slate-100 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-slate-800"
+              />
+              <button
+                type="submit"
+                className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-800 transition hover:bg-slate-50"
+              >
+                批量上传产品
+              </button>
+            </form>
+          </div>
+        </div>
       </section>
 
       <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white">

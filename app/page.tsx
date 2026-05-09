@@ -134,7 +134,7 @@ export default async function Home({
     <main className="min-h-screen bg-slate-50 text-slate-900">
       <SiteHeader />
 
-      <section className="relative z-0 w-full overflow-hidden border-y border-slate-200">
+      <section className="relative z-0 w-full overflow-x-clip border-y border-slate-200">
         <HomeBannerCarousel slides={bannerSlides} />
         <HomeBannerHeroOverlay hero={bannerHero} />
       </section>

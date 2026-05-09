@@ -40,7 +40,7 @@ export function HomeBannerCarousel({ slides }: { slides: BannerSlide[] }) {
   if (count === 1) {
     const s = slides[0];
     return (
-      <div className="relative z-0 h-[42vh] min-h-[320px] w-full md:h-[56vh]">
+      <div className="relative z-0 min-h-[500px] h-[56vh] w-full md:min-h-[320px] md:h-[56vh]">
         <Image
           src={s.src}
           alt={s.alt}
@@ -56,7 +56,7 @@ export function HomeBannerCarousel({ slides }: { slides: BannerSlide[] }) {
 
   return (
     <div
-      className="relative z-0 h-[42vh] min-h-[320px] w-full md:h-[56vh]"
+      className="relative z-0 min-h-[500px] h-[56vh] w-full md:min-h-[320px] md:h-[56vh]"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
     >
@@ -82,7 +82,7 @@ export function HomeBannerCarousel({ slides }: { slides: BannerSlide[] }) {
         ))}
       </div>
 
-      <div className="pointer-events-auto absolute inset-x-0 bottom-4 z-[2] flex items-center justify-center gap-2 px-4">
+      <div className="pointer-events-auto absolute inset-x-0 bottom-5 z-[2] flex items-center justify-center gap-2 px-4 sm:bottom-6">
         {slides.map((_, i) => (
           <button
             key={i}

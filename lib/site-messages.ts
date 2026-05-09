@@ -92,6 +92,8 @@ export type SiteMessages = {
     finishedTitle: string;
     finishedSubtitle: string;
     backToHome: string;
+    /** Short label for the “all categories” option in the mobile products category picker */
+    categorySelectAll: string;
     empty: string;
     previous: string;
     next: string;
@@ -234,6 +236,7 @@ const en: SiteMessages = {
     finishedTitle: "Finished Products & Other Products",
     finishedSubtitle: "Finished product lines and other wholesale-ready product options.",
     backToHome: "Back to Home",
+    categorySelectAll: "All categories",
     empty: "No products yet. Add products in Admin under “Product management”.",
     previous: "Previous",
     next: "Next",
@@ -376,6 +379,7 @@ const vi: SiteMessages = {
     finishedTitle: "Thành phẩm & sản phẩm khác",
     finishedSubtitle: "Dòng thành phẩm và các lựa chọn bán sỉ khác.",
     backToHome: "Về trang chủ",
+    categorySelectAll: "Tất cả danh mục",
     empty: "Chưa có dữ liệu sản phẩm. Vui lòng thêm sản phẩm trong Admin.",
     previous: "Trước",
     next: "Tiếp",
