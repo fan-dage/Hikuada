@@ -32,10 +32,12 @@ function ilikeOrPattern(q: string) {
 type Product = {
   id: number;
   model: string | null;
+  display_name: string | null;
   category: string | null;
   sort_order: number | null;
   size: string | null;
   packing_spec: string | null;
+  detail_specs: string | null;
   stock_status: string | null;
   stock_quantity: number | null;
   image_url: string | null;
@@ -238,6 +240,22 @@ function bulkImportErrorMessage(code: string): string {
   return map[code] || "批量导入失败。";
 }
 
+const PRODUCT_OPTIONAL_COLS = ["sort_order", "image_object_fit", "display_name", "detail_specs"] as const;
+
+function productPayloadOmitAttempts(): (typeof PRODUCT_OPTIONAL_COLS[number])[][] {
+  const keys = [...PRODUCT_OPTIONAL_COLS];
+  const n = keys.length;
+  const out: (typeof PRODUCT_OPTIONAL_COLS[number])[][] = [];
+  for (let mask = 0; mask < 1 << n; mask++) {
+    const omit: (typeof PRODUCT_OPTIONAL_COLS[number])[] = [];
+    for (let i = 0; i < n; i++) {
+      if (mask & (1 << i)) omit.push(keys[i]);
+    }
+    out.push(omit);
+  }
+  return out;
+}
+
 async function insertProductRow(
   supabase: ReturnType<typeof getSupabaseServerClient>,
   row: {
@@ -250,12 +268,13 @@ async function insertProductRow(
     image_url: string | null;
     sort_order?: number;
     image_object_fit?: string;
+    display_name?: string | null;
+    detail_specs?: string | null;
   },
 ) {
   const base = { ...row } as Record<string, unknown>;
-  const attempts: ("sort_order" | "image_object_fit")[][] = [[], ["sort_order"], ["image_object_fit"], ["sort_order", "image_object_fit"]];
   let lastError = null as { message: string; code?: string } | null;
-  for (const omitKeys of attempts) {
+  for (const omitKeys of productPayloadOmitAttempts()) {
     const payload =
       omitKeys.length === 0 ? base : omitProductPayloadKeys(base, omitKeys as (keyof typeof base)[]);
     const { error } = await supabase.from("hikuada_products").insert(payload);
@@ -278,12 +297,13 @@ async function updateProductRow(
     image_url: string | null;
     sort_order?: number;
     image_object_fit?: string;
+    display_name?: string | null;
+    detail_specs?: string | null;
   },
 ) {
   const base = { ...row } as Record<string, unknown>;
-  const attempts: ("sort_order" | "image_object_fit")[][] = [[], ["sort_order"], ["image_object_fit"], ["sort_order", "image_object_fit"]];
   let lastError = null as { message: string; code?: string } | null;
-  for (const omitKeys of attempts) {
+  for (const omitKeys of productPayloadOmitAttempts()) {
     const payload =
       omitKeys.length === 0 ? base : omitProductPayloadKeys(base, omitKeys as (keyof typeof base)[]);
     const { error } = await supabase.from("hikuada_products").update(payload).eq("id", id);
@@ -330,6 +350,9 @@ async function createProduct(formData: FormData) {
   const sortOrder = Number.isNaN(parsedSortOrder) || parsedSortOrder < 0 ? 100 : parsedSortOrder;
   const image_object_fit_raw = formData.get("image_object_fit")?.toString().trim().toLowerCase();
   const image_object_fit = image_object_fit_raw === "contain" ? "contain" : "cover";
+  const display_name = formData.get("display_name")?.toString().trim() || null;
+  const detail_specs_raw = formData.get("detail_specs")?.toString() ?? "";
+  const detail_specs = detail_specs_raw.trim().length > 0 ? detail_specs_raw.trim() : null;
 
   if (!model || !sizeWidthRaw || !sizeHeightRaw || !size) {
     return;
@@ -367,6 +390,8 @@ async function createProduct(formData: FormData) {
       stock_quantity: stockQuantity,
       image_url: imageUrl,
       image_object_fit,
+      display_name,
+      detail_specs,
     });
 
     if (error) {
@@ -495,6 +520,8 @@ async function bulkImportProducts(formData: FormData) {
       stock_quantity: stockQuantity,
       image_url,
       image_object_fit,
+      display_name: null,
+      detail_specs: null,
     });
 
     if (error) {
@@ -595,6 +622,9 @@ async function updateProduct(formData: FormData) {
   const sortOrder = Number.isNaN(parsedSortOrder) || parsedSortOrder < 0 ? 100 : parsedSortOrder;
   const image_object_fit_raw = formData.get("image_object_fit")?.toString().trim().toLowerCase();
   const image_object_fit = image_object_fit_raw === "contain" ? "contain" : "cover";
+  const display_name = formData.get("display_name")?.toString().trim() || null;
+  const detail_specs_raw = formData.get("detail_specs")?.toString() ?? "";
+  const detail_specs = detail_specs_raw.trim().length > 0 ? detail_specs_raw.trim() : null;
 
   let packingSpec = "";
   if (packingLengthRaw || packingPcsRaw) {
@@ -658,6 +688,8 @@ async function updateProduct(formData: FormData) {
       stock_quantity: stockQuantity,
       image_url: nextImageUrl,
       image_object_fit,
+      display_name,
+      detail_specs,
     });
 
     if (updateError) {
@@ -677,6 +709,7 @@ async function updateProduct(formData: FormData) {
     revalidatePath("/admin/home");
     revalidatePath("/");
     revalidatePath("/products");
+    revalidatePath(`/products/${id}`);
   } catch (err) {
     const message = err instanceof Error ? err.message : "更新失败";
     throw new Error(message);
@@ -739,7 +772,7 @@ export default async function AdminProductsPage({
   let listQuery = supabase
     .from("hikuada_products")
     .select(
-      "id, model, category, sort_order, size, packing_spec, stock_status, stock_quantity, image_url, image_object_fit, created_at",
+      "id, model, display_name, category, sort_order, size, packing_spec, detail_specs, stock_status, stock_quantity, image_url, image_object_fit, created_at",
       { count: "exact" },
     )
     .order("sort_order", { ascending: true, nullsFirst: false })
@@ -748,7 +781,7 @@ export default async function AdminProductsPage({
   if (rawQ.length > 0) {
     const pat = ilikeOrPattern(rawQ);
     listQuery = listQuery.or(
-      `model.ilike.${pat},size.ilike.${pat},packing_spec.ilike.${pat},category.ilike.${pat}`,
+      `model.ilike.${pat},display_name.ilike.${pat},detail_specs.ilike.${pat},size.ilike.${pat},packing_spec.ilike.${pat},category.ilike.${pat}`,
     );
   }
 
@@ -824,6 +857,11 @@ export default async function AdminProductsPage({
             name="model"
             required
             placeholder="型号（如 HKD-801）"
+            className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none ring-slate-400 focus:ring-2"
+          />
+          <input
+            name="display_name"
+            placeholder="前台详情标题（可选，如机械英文名）"
             className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none ring-slate-400 focus:ring-2"
           />
           <select
@@ -906,6 +944,12 @@ export default async function AdminProductsPage({
             <option value="cover">卡片图片：铺满裁剪（默认）</option>
             <option value="contain">卡片图片：完整显示（留白）</option>
           </select>
+          <textarea
+            name="detail_specs"
+            rows={6}
+            placeholder="详情页完整参数（可选，多行；有内容时前台详情页主区块显示此项，适合机械长说明）"
+            className="md:col-span-2 min-h-[120px] rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none ring-slate-400 focus:ring-2"
+          />
           <input
             type="file"
             name="image_file"

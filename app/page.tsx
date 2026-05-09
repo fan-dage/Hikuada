@@ -232,10 +232,19 @@ export default async function Home({
                     src={product.image_url}
                     alt={`${product.model || "Product"} image`}
                     objectFit={productCardImageObjectFit(product.image_object_fit)}
+                    detailHref={`/products/${product.id}`}
+                    detailAriaLabel={m.productDetail.viewDetailsAria}
                   />
                 </div>
                 <div className="space-y-2 p-5">
-                  <h3 className="text-xl font-bold text-slate-900">{product.model || "-"}</h3>
+                  <h3 className="text-xl font-bold text-slate-900">
+                    <Link
+                      href={`/products/${product.id}`}
+                      className="transition hover:text-slate-700 hover:underline"
+                    >
+                      {product.model || "-"}
+                    </Link>
+                  </h3>
                   <ProductCardSpecs
                     size={product.size}
                     packingSpec={product.packing_spec}

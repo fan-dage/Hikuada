@@ -8,10 +8,12 @@ import { useEffect, useMemo, useRef, useState, type FocusEvent, type KeyboardEve
 type Product = {
   id: number;
   model: string | null;
+  display_name: string | null;
   category: string | null;
   sort_order: number | null;
   size: string | null;
   packing_spec: string | null;
+  detail_specs: string | null;
   stock_status: string | null;
   stock_quantity: number | null;
   image_url: string | null;
@@ -316,6 +318,15 @@ export function AdminProductsTable({
                 />
               </div>
               <div>
+                <p className="mb-1 text-xs font-medium text-slate-600">详情页标题（可选）</p>
+                <input
+                  name="display_name"
+                  defaultValue={editingProduct.display_name || ""}
+                  placeholder="如 Smart CNC V-Nailing Machine"
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none ring-slate-400 focus:ring-2"
+                />
+              </div>
+              <div>
                 <p className="mb-1 text-xs font-medium text-slate-600">分类</p>
                 <select
                   name="category"
@@ -328,6 +339,16 @@ export function AdminProductsTable({
                     </option>
                   ))}
                 </select>
+              </div>
+              <div className="md:col-span-2">
+                <p className="mb-1 text-xs font-medium text-slate-600">详情页完整参数（可选，多行）</p>
+                <textarea
+                  name="detail_specs"
+                  rows={8}
+                  defaultValue={editingProduct.detail_specs || ""}
+                  placeholder="有内容时前台详情页主区块显示；中英越等多行说明可写在这里"
+                  className="min-h-[160px] w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none ring-slate-400 focus:ring-2"
+                />
               </div>
               <div className="grid gap-2 md:grid-cols-2 md:col-span-2">
                 <div>

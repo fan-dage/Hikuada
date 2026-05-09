@@ -30,6 +30,26 @@ export type SiteMessages = {
     size: string;
     packing: string;
   };
+  productDetail: {
+    backToCatalog: string;
+    /** aria-label on product card image when it links to the detail page */
+    viewDetailsAria: string;
+    categoryLabel: string;
+    stockQtyLabel: string;
+    /** Shown above model when display_name is set */
+    modelSkuLabel: string;
+    /** Heading for detail_specs block on /products/[id] */
+    fullSpecsHeading: string;
+    /** Table column headers when detail_specs is rendered as tables */
+    specParameterColumn: string;
+    specValueColumn: string;
+    /** Machinery detail sidebar — short feature list */
+    machineryFeaturesTitle: string;
+    machineryFeaturePrecision: string;
+    machineryFeaturePs: string;
+    machineryFeatureNailing: string;
+    machineryBulkWholesaleNote: string;
+  };
   addToInquiryList: {
     add: string;
     added: string;
@@ -172,6 +192,22 @@ const en: SiteMessages = {
   productCard: {
     size: "Size:",
     packing: "Packing:",
+  },
+  productDetail: {
+    backToCatalog: "← Back to catalog",
+    viewDetailsAria: "View product details",
+    categoryLabel: "Category:",
+    stockQtyLabel: "Stock quantity:",
+    modelSkuLabel: "Model / SKU:",
+    fullSpecsHeading: "Specifications",
+    specParameterColumn: "Parameter",
+    specValueColumn: "Value",
+    machineryFeaturesTitle: "Features",
+    machineryFeaturePrecision:
+      "Precision CNC control — repeatable angles and lengths for consistent framing.",
+    machineryFeaturePs: "Optimized for PS moldings and production-friendly shop workflows.",
+    machineryFeatureNailing: "10 nailing positions for flexible frame assembly setups.",
+    machineryBulkWholesaleNote: "Bulk Wholesale & FCL Discount Available",
   },
   addToInquiryList: {
     add: "Add to inquiry list",
@@ -317,6 +353,22 @@ const vi: SiteMessages = {
   productCard: {
     size: "Kích thước:",
     packing: "Đóng gói:",
+  },
+  productDetail: {
+    backToCatalog: "← Quay lại danh mục",
+    viewDetailsAria: "Xem chi tiết sản phẩm",
+    categoryLabel: "Danh mục:",
+    stockQtyLabel: "Tồn kho:",
+    modelSkuLabel: "Mã / SKU:",
+    fullSpecsHeading: "Thông số chi tiết",
+    specParameterColumn: "Thông số",
+    specValueColumn: "Giá trị",
+    machineryFeaturesTitle: "Điểm nổi bật",
+    machineryFeaturePrecision:
+      "Điều khiển CNC chính xác — góc và chiều dài lặp lại ổn định cho khung ảnh.",
+    machineryFeaturePs: "Tối ưu cho phào chỉ PS và quy trình xưởng thân thiện sản xuất.",
+    machineryFeatureNailing: "10 vị trí đóng đinh — lắp ráp khung linh hoạt.",
+    machineryBulkWholesaleNote: "Giá sỉ số lượng lớn & ưu đãi FCL",
   },
   addToInquiryList: {
     add: "Thêm vào danh sách hỏi giá",

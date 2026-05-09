@@ -9,6 +9,7 @@ import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { getServerLocale } from "@/lib/server-locale";
 import { getPageList } from "@/lib/pagination-page-list";
+import { isProductDetailCategory } from "@/lib/product-catalog-back-href";
 import { displayStockStatus, getSiteMessages } from "@/lib/site-messages";
 
 const PRODUCTS_PER_PAGE = 16;
@@ -24,6 +25,7 @@ function hrefForProductsPage(page: number, category: "ps_moldings" | "frame_mach
 type Product = {
   id: number;
   model: string | null;
+  category: string | null;
   sort_order: number | null;
   size: string | null;
   packing_spec: string | null;
@@ -76,7 +78,7 @@ export default async function ProductsPage({
   const supabase = getSupabaseServerClient();
   let query = supabase
     .from("hikuada_products")
-    .select("id, model, sort_order, size, packing_spec, stock_status, image_url, image_object_fit", {
+    .select("id, model, category, sort_order, size, packing_spec, stock_status, image_url, image_object_fit", {
       count: "exact",
     })
     .order("sort_order", { ascending: true, nullsFirst: false })
@@ -130,7 +132,11 @@ export default async function ProductsPage({
           </div>
         ) : (
           <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
-            {products.map((product) => (
+            {products.map((product) => {
+              const detailHref = isProductDetailCategory(product.category)
+                ? `/products/${product.id}`
+                : undefined;
+              return (
               <article
                 key={product.id}
                 className="group relative overflow-hidden rounded-2xl border border-slate-200 bg-white transition duration-300 hover:-translate-y-1 hover:shadow-[0_20px_45px_-30px_rgba(15,23,42,0.45)]"
@@ -147,10 +153,23 @@ export default async function ProductsPage({
                     src={product.image_url}
                     alt={`${product.model || "Product"} image`}
                     objectFit={productCardImageObjectFit(product.image_object_fit)}
+                    detailHref={detailHref}
+                    detailAriaLabel={detailHref ? m.productDetail.viewDetailsAria : undefined}
                   />
                 </div>
                 <div className="space-y-2 p-5">
-                  <h3 className="text-xl font-bold text-slate-900">{product.model || "-"}</h3>
+                  <h3 className="text-xl font-bold text-slate-900">
+                    {detailHref ? (
+                      <Link
+                        href={detailHref}
+                        className="transition hover:text-slate-700 hover:underline"
+                      >
+                        {product.model || "-"}
+                      </Link>
+                    ) : (
+                      product.model || "-"
+                    )}
+                  </h3>
                   <ProductCardSpecs
                     size={product.size}
                     packingSpec={product.packing_spec}
@@ -160,7 +179,8 @@ export default async function ProductsPage({
                   <AddToInquiryListButton product={product} />
                 </div>
               </article>
-            ))}
+            );
+            })}
           </div>
         )}
 
